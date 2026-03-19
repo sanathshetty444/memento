@@ -1,0 +1,29 @@
+{
+  "name": "memento",
+  "version": "0.1.0",
+  "description": "Persistent semantic memory for Claude Code — save, recall, and search context across sessions",
+  "mcpServers": {
+    "memory": {
+      "command": "node",
+      "args": ["dist/index.js"]
+    }
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "command": "node dist/hooks/post-tool-use.js",
+        "timeout": 5000
+      }
+    ],
+    "Stop": [
+      {
+        "command": "node dist/hooks/stop.js",
+        "timeout": 10000
+      }
+    ]
+  },
+  "skills": [
+    "skills/recall.md",
+    "skills/remember.md"
+  ]
+}

@@ -3,7 +3,8 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 export interface StoreConfig {
-  type: "chromadb" | "neo4j";
+  type: "local" | "chromadb" | "neo4j";
+  localPath: string;
   chromaPath: string;
   neo4jUrl?: string;
   neo4jUser?: string;
@@ -45,7 +46,8 @@ export interface MementoConfig {
 
 const DEFAULTS: MementoConfig = {
   store: {
-    type: "chromadb",
+    type: "local",
+    localPath: join(getDataDir(), "store"),
     chromaPath: join(getDataDir(), "chromadb"),
   },
   embeddings: {
@@ -113,14 +115,16 @@ function loadEnvOverrides(): Partial<MementoConfig> {
   const overrides: Partial<MementoConfig> = {};
 
   const storeType = process.env.MEMENTO_STORE_TYPE;
+  const localPath = process.env.MEMENTO_LOCAL_PATH;
   const chromaPath = process.env.MEMENTO_CHROMA_PATH;
   const neo4jUrl = process.env.MEMENTO_NEO4J_URL;
   const neo4jUser = process.env.MEMENTO_NEO4J_USER;
   const neo4jPassword = process.env.MEMENTO_NEO4J_PASSWORD;
 
-  if (storeType || chromaPath || neo4jUrl) {
+  if (storeType || localPath || chromaPath || neo4jUrl) {
     overrides.store = {} as StoreConfig;
     if (storeType) overrides.store.type = storeType as StoreConfig["type"];
+    if (localPath) overrides.store.localPath = localPath;
     if (chromaPath) overrides.store.chromaPath = chromaPath;
     if (neo4jUrl) overrides.store.neo4jUrl = neo4jUrl;
     if (neo4jUser) overrides.store.neo4jUser = neo4jUser;

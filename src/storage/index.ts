@@ -2,9 +2,19 @@ import type { VectorStore } from "./interface.js";
 
 export async function createStore(config: {
   type: string;
+  local?: { path: string };
   chromadb?: { path: string };
   neo4j?: { url: string; username: string; password: string };
 }): Promise<VectorStore> {
+  if (config.type === "local") {
+    const { LocalFileAdapter } = await import("./local-file-adapter.js");
+    const store = new LocalFileAdapter(
+      config.local ?? { path: "~/.claude-memory/store" }
+    );
+    await store.initialize();
+    return store;
+  }
+
   if (config.type === "chromadb") {
     const { ChromaDBAdapter } = await import("./chromadb-adapter.js");
     const store = new ChromaDBAdapter(

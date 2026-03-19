@@ -11,6 +11,7 @@ async function main() {
 
   const store = await createStore({
     type: config.store.type,
+    local: { path: config.store.localPath },
     chromadb: { path: config.store.chromaPath },
   });
 

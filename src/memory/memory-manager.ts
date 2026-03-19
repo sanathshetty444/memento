@@ -82,7 +82,7 @@ export class MemoryManager {
     let parentId: string | undefined;
 
     for (const chunk of chunks) {
-      const hash = contentHash(chunk.content);
+      const hash = await contentHash(chunk.content);
       const embedding = await this.embeddings.embed(chunk.content);
 
       // Check for duplicates among existing entries

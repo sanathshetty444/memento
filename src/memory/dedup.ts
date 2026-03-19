@@ -3,16 +3,26 @@
  * Provides content hashing, cosine similarity, and duplicate detection.
  */
 
-import { createHash } from "node:crypto";
-
 const SIMILARITY_THRESHOLD = 0.92;
 
 /**
  * Compute a SHA-256 hash of normalized content.
  * Normalization: trim, lowercase, collapse whitespace.
+ * Uses Web Crypto API as primary, Node.js crypto as fallback.
  */
-export function contentHash(content: string): string {
+export async function contentHash(content: string): Promise<string> {
   const normalized = content.trim().toLowerCase().replace(/\s+/g, " ");
+  const data = new TextEncoder().encode(normalized);
+
+  if (typeof globalThis.crypto?.subtle?.digest === "function") {
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = new Uint8Array(hashBuffer);
+    return Array.from(hashArray)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
+  const { createHash } = await import("node:crypto");
   return createHash("sha256").update(normalized).digest("hex");
 }
 

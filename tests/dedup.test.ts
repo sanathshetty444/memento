@@ -6,15 +6,28 @@ import {
 } from "../src/memory/dedup.js";
 
 describe("contentHash", () => {
-  it("produces consistent hashes for the same content", () => {
-    const hash1 = contentHash("hello world");
-    const hash2 = contentHash("hello world");
+  it("produces consistent hashes for the same content", async () => {
+    const hash1 = await contentHash("hello world");
+    const hash2 = await contentHash("hello world");
     expect(hash1).toBe(hash2);
   });
 
-  it("normalizes whitespace and case", () => {
-    const hash1 = contentHash("Hello   World");
-    const hash2 = contentHash("hello world");
+  it("normalizes whitespace and case", async () => {
+    const hash1 = await contentHash("Hello   World");
+    const hash2 = await contentHash("hello world");
+    expect(hash1).toBe(hash2);
+  });
+
+  it("contentHash returns consistent SHA-256 hex for same content", async () => {
+    const hash1 = await contentHash("hello world");
+    const hash2 = await contentHash("hello world");
+    expect(hash1).toBe(hash2);
+    expect(hash1).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("contentHash normalizes whitespace before hashing", async () => {
+    const hash1 = await contentHash("  hello   world  ");
+    const hash2 = await contentHash("hello world");
     expect(hash1).toBe(hash2);
   });
 });
@@ -41,8 +54,8 @@ describe("cosineSimilarity", () => {
 });
 
 describe("isDuplicate", () => {
-  it("detects exact hash matches", () => {
-    const hash = contentHash("test content");
+  it("detects exact hash matches", async () => {
+    const hash = await contentHash("test content");
     const result = isDuplicate(hash, [], [
       { contentHash: hash, id: "entry-1" },
     ]);

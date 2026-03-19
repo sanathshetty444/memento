@@ -180,7 +180,7 @@ async function processEntry(
     const embedding = await embedder.embed(chunk.content);
 
     // Step 5: Dedup check — query store for similar entries
-    const hash = contentHash(chunk.content);
+    const hash = await contentHash(chunk.content);
     const similar = await store.search(embedding, {
       namespace,
       limit: 5,

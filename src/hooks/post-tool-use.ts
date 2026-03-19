@@ -14,8 +14,9 @@ import { join } from "node:path";
 interface HookInput {
   tool_name: string;
   tool_input: Record<string, unknown>;
-  tool_output: string;
+  tool_response: Record<string, unknown> | string;
   session_id: string;
+  cwd: string;
 }
 
 interface QueueEntry {
@@ -60,7 +61,10 @@ function main(): void {
     }
 
     // Tier 2: Content significance checks
-    const output = input.tool_output ?? "";
+    const output =
+      typeof input.tool_response === "string"
+        ? input.tool_response
+        : JSON.stringify(input.tool_response ?? "");
     if (output.length < MIN_OUTPUT_LENGTH) {
       process.exit(0);
     }

@@ -26,7 +26,7 @@ async function main() {
     version: "0.1.0",
   });
 
-  registerAllTools(server, manager);
+  registerAllTools(server, manager, embeddings);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

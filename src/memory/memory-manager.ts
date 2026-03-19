@@ -1,6 +1,7 @@
 /**
  * Central orchestrator for the memory subsystem.
  * Coordinates: redaction → tagging → chunking → dedup → embedding → storage.
+ * Optionally wraps operations with circuit breaker, WAL, and LRU cache for resilience.
  */
 
 import { v4 as uuidv4 } from "uuid";
@@ -21,19 +22,39 @@ import { autoTag } from "./tagger.js";
 import { chunkContent } from "./chunker.js";
 import { resolveNamespace } from "./namespace.js";
 import { contentHash, isDuplicate } from "./dedup.js";
+import { CircuitBreaker } from "../resilience/circuit-breaker.js";
+import { WriteAheadLog } from "../resilience/wal.js";
+import { LRUCache } from "../resilience/cache.js";
 
 export interface MemoryManagerOptions {
   store: VectorStore;
   embeddings: EmbeddingProvider;
+  enableResilience?: boolean; // default true
 }
 
 export class MemoryManager {
   private store: VectorStore;
   private embeddings: EmbeddingProvider;
+  private circuitBreaker: CircuitBreaker | null;
+  private wal: WriteAheadLog | null;
+  private cache: LRUCache<string, MemoryEntry> | null;
+  private resilienceEnabled: boolean;
 
-  constructor({ store, embeddings }: MemoryManagerOptions) {
+  constructor({ store, embeddings, enableResilience }: MemoryManagerOptions) {
     this.store = store;
     this.embeddings = embeddings;
+    this.resilienceEnabled = enableResilience ?? true;
+
+    if (this.resilienceEnabled) {
+      this.circuitBreaker = new CircuitBreaker();
+      this.wal = new WriteAheadLog();
+      this.cache = new LRUCache<string, MemoryEntry>(100);
+      this.replayWAL();
+    } else {
+      this.circuitBreaker = null;
+      this.wal = null;
+      this.cache = null;
+    }
   }
 
   /**
@@ -65,10 +86,14 @@ export class MemoryManager {
       const embedding = await this.embeddings.embed(chunk.content);
 
       // Check for duplicates among existing entries
-      const candidates = await this.store.search(embedding, {
-        namespace,
-        limit: 5,
-      });
+      const searchFn = () =>
+        this.store.search(embedding, {
+          namespace,
+          limit: 5,
+        });
+      const candidates = this.circuitBreaker
+        ? await this.circuitBreaker.execute(searchFn)
+        : await searchFn();
 
       const dupResult = isDuplicate(
         hash,
@@ -121,7 +146,29 @@ export class MemoryManager {
         },
       };
 
-      await this.store.upsert(entry);
+      // WAL: append before upsert
+      let walId: string | undefined;
+      if (this.wal) {
+        walId = this.wal.append("upsert", entry);
+      }
+
+      // Circuit breaker wraps the upsert
+      if (this.circuitBreaker) {
+        await this.circuitBreaker.execute(() => this.store.upsert(entry));
+      } else {
+        await this.store.upsert(entry);
+      }
+
+      // WAL: mark committed after successful upsert
+      if (this.wal && walId) {
+        this.wal.markCommitted(walId);
+      }
+
+      // Cache: store entry after successful save
+      if (this.cache) {
+        this.cache.set(entry.id, entry);
+      }
+
       savedEntries.push(entry);
     }
 
@@ -137,13 +184,42 @@ export class MemoryManager {
 
     const queryEmbedding = await this.embeddings.embed(options.query);
 
-    return this.store.search(queryEmbedding, {
-      namespace,
-      tags: options.tags,
-      after: options.after,
-      before: options.before,
-      limit,
-    });
+    try {
+      const searchFn = () =>
+        this.store.search(queryEmbedding, {
+          namespace,
+          tags: options.tags,
+          after: options.after,
+          before: options.before,
+          limit,
+        });
+
+      const results = this.circuitBreaker
+        ? await this.circuitBreaker.execute(searchFn)
+        : await searchFn();
+
+      // Populate cache from results
+      if (this.cache) {
+        for (const result of results) {
+          this.cache.set(result.entry.id, result.entry);
+        }
+      }
+
+      return results;
+    } catch (error) {
+      // Fallback to cache if circuit breaker is open
+      if (this.cache && this.cache.size > 0) {
+        const cachedResults: MemoryResult[] = [];
+        for (const [, entry] of this.cache.entries()) {
+          if (entry.metadata.namespace === namespace) {
+            cachedResults.push({ entry, score: 0 });
+          }
+          if (cachedResults.length >= limit) break;
+        }
+        if (cachedResults.length > 0) return cachedResults;
+      }
+      throw error;
+    }
   }
 
   /**
@@ -156,19 +232,55 @@ export class MemoryManager {
 
     const queryEmbedding = await this.embeddings.embed(options.query);
 
-    return this.store.search(queryEmbedding, {
-      tags: options.tags,
-      after: options.after,
-      before: options.before,
-      limit,
-    });
+    try {
+      const searchFn = () =>
+        this.store.search(queryEmbedding, {
+          tags: options.tags,
+          after: options.after,
+          before: options.before,
+          limit,
+        });
+
+      const results = this.circuitBreaker
+        ? await this.circuitBreaker.execute(searchFn)
+        : await searchFn();
+
+      // Populate cache from results
+      if (this.cache) {
+        for (const result of results) {
+          this.cache.set(result.entry.id, result.entry);
+        }
+      }
+
+      return results;
+    } catch (error) {
+      // Fallback to cache if circuit breaker is open
+      if (this.cache && this.cache.size > 0) {
+        const cachedResults: MemoryResult[] = [];
+        for (const [, entry] of this.cache.entries()) {
+          cachedResults.push({ entry, score: 0 });
+          if (cachedResults.length >= limit) break;
+        }
+        if (cachedResults.length > 0) return cachedResults;
+      }
+      throw error;
+    }
   }
 
   /**
    * Delete a memory entry by ID.
    */
   async forget(id: string): Promise<boolean> {
-    return this.store.delete(id);
+    const result = this.circuitBreaker
+      ? await this.circuitBreaker.execute(() => this.store.delete(id))
+      : await this.store.delete(id);
+
+    // Remove from cache
+    if (this.cache) {
+      this.cache.delete(id);
+    }
+
+    return result;
   }
 
   /**
@@ -177,19 +289,54 @@ export class MemoryManager {
   async list(options: ListOptions): Promise<MemoryEntry[]> {
     const namespace = options.namespace ?? resolveNamespace();
 
-    return this.store.list({
-      namespace,
-      tags: options.tags,
-      limit: Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT),
-      offset: options.offset ?? 0,
-    });
+    const listFn = () =>
+      this.store.list({
+        namespace,
+        tags: options.tags,
+        limit: Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT),
+        offset: options.offset ?? 0,
+      });
+
+    return this.circuitBreaker
+      ? this.circuitBreaker.execute(listFn)
+      : listFn();
   }
 
   /**
    * Count memory entries in a namespace.
    */
   async count(namespace?: string): Promise<number> {
-    return this.store.count(namespace);
+    const countFn = () => this.store.count(namespace);
+
+    return this.circuitBreaker
+      ? this.circuitBreaker.execute(countFn)
+      : countFn();
+  }
+
+  /**
+   * Replay any pending WAL entries that were not committed (e.g., after a crash).
+   */
+  private replayWAL(): void {
+    if (!this.wal) return;
+
+    const pending = this.wal.getPending();
+    for (const walEntry of pending) {
+      if (walEntry.operation === "upsert" && walEntry.data) {
+        const entry = walEntry.data as MemoryEntry;
+        // Fire-and-forget: replay in background, mark committed on success
+        this.store
+          .upsert(entry)
+          .then(() => {
+            this.wal!.markCommitted(walEntry.id);
+            if (this.cache) {
+              this.cache.set(entry.id, entry);
+            }
+          })
+          .catch(() => {
+            // Will be retried on next startup
+          });
+      }
+    }
   }
 }
 

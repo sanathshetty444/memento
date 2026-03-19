@@ -42,7 +42,7 @@ const MEMENTO_MD_BLOCK = `${MEMENTO_MD_START}
 
 A semantic memory system runs via MCP. Context is auto-captured in the background via hooks.
 
-**On session start**: If the user's request relates to prior work or continues a previous conversation, use \`memory_recall\` with a relevant query to restore context. This compensates for any context lost during compaction.
+**On every session start**: ALWAYS use \`memory_recall\` with a query relevant to the user's request to restore context. Do this unconditionally — do not skip even if the request seems unrelated to prior work. This ensures continuity across sessions and compensates for context lost during compaction.
 
 **During conversation**: When the user makes an important decision, discovers a critical bug, or establishes an architecture pattern, use \`memory_save\` with appropriate tags to persist it.
 

@@ -20,40 +20,86 @@ import {
 import { redact } from "./redactor.js";
 import { autoTag } from "./tagger.js";
 import { chunkContent } from "./chunker.js";
-import { resolveNamespace } from "./namespace.js";
 import { contentHash, isDuplicate } from "./dedup.js";
-import { CircuitBreaker } from "../resilience/circuit-breaker.js";
-import { WriteAheadLog } from "../resilience/wal.js";
 import { LRUCache } from "../resilience/cache.js";
+
+export interface MemoryManagerConfig {
+  deduplicationThreshold?: number; // Default: 0.92
+  chunkSize?: number; // Default: 500 (words)
+  chunkOverlap?: number; // Default: 100 (words)
+  redactSecrets?: boolean; // Default: true
+  autoTag?: boolean; // Default: true
+}
 
 export interface MemoryManagerOptions {
   store: VectorStore;
   embeddings: EmbeddingProvider;
   enableResilience?: boolean; // default true
+  config?: MemoryManagerConfig;
 }
 
 export class MemoryManager {
   private store: VectorStore;
   private embeddings: EmbeddingProvider;
-  private circuitBreaker: CircuitBreaker | null;
-  private wal: WriteAheadLog | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private circuitBreaker: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private wal: any;
   private cache: LRUCache<string, MemoryEntry> | null;
   private resilienceEnabled: boolean;
+  private config: Required<MemoryManagerConfig>;
 
-  constructor({ store, embeddings, enableResilience }: MemoryManagerOptions) {
+  constructor({ store, embeddings, enableResilience, config }: MemoryManagerOptions) {
     this.store = store;
     this.embeddings = embeddings;
+    this.config = {
+      deduplicationThreshold: 0.92,
+      chunkSize: 500,
+      chunkOverlap: 100,
+      redactSecrets: true,
+      autoTag: true,
+      ...config,
+    };
     this.resilienceEnabled = enableResilience ?? true;
+    this.cache = this.resilienceEnabled
+      ? new LRUCache<string, MemoryEntry>(100)
+      : null;
+    this.circuitBreaker = null;
+    this.wal = null;
 
     if (this.resilienceEnabled) {
+      this.initResilience();
+    }
+  }
+
+  /**
+   * Dynamically import and initialize resilience modules (Node.js only).
+   * In browser environments, these modules won't load and resilience is silently disabled.
+   */
+  private async initResilience(): Promise<void> {
+    try {
+      const [{ CircuitBreaker }, { WriteAheadLog }] = await Promise.all([
+        import("../resilience/circuit-breaker.js"),
+        import("../resilience/wal.js"),
+      ]);
       this.circuitBreaker = new CircuitBreaker();
       this.wal = new WriteAheadLog();
-      this.cache = new LRUCache<string, MemoryEntry>(100);
       this.replayWAL();
-    } else {
-      this.circuitBreaker = null;
-      this.wal = null;
-      this.cache = null;
+    } catch {
+      // In browser environment, resilience modules won't load — that's fine
+    }
+  }
+
+  /**
+   * Dynamically resolve the namespace (Node.js only).
+   * Throws in browser if no explicit namespace is provided.
+   */
+  private async getNamespace(): Promise<string> {
+    try {
+      const { resolveNamespace } = await import("./namespace.js");
+      return resolveNamespace();
+    } catch {
+      throw new Error("namespace is required in browser environment");
     }
   }
 
@@ -64,12 +110,14 @@ export class MemoryManager {
   async save(options: SaveOptions): Promise<MemoryEntry[]> {
     const namespace = options.global
       ? GLOBAL_NAMESPACE
-      : (options.namespace ?? resolveNamespace());
+      : (options.namespace ?? await this.getNamespace());
 
     // Pipeline: redact → tag → chunk → dedup → embed → store
-    const redactedContent = redact(options.content);
+    const redactedContent = this.config.redactSecrets
+      ? redact(options.content)
+      : options.content;
 
-    const detectedTags = autoTag(redactedContent);
+    const detectedTags = this.config.autoTag ? autoTag(redactedContent) : [];
     const mergedTags = [
       ...new Set([...detectedTags, ...(options.tags ?? [])]),
     ];
@@ -77,7 +125,10 @@ export class MemoryManager {
     const summary =
       options.summary ?? generateSummary(redactedContent);
 
-    const chunks = chunkContent(redactedContent);
+    const chunks = chunkContent(redactedContent, {
+      maxWords: this.config.chunkSize,
+      overlapWords: this.config.chunkOverlap,
+    });
     const savedEntries: MemoryEntry[] = [];
     let parentId: string | undefined;
 
@@ -98,7 +149,7 @@ export class MemoryManager {
       const dupResult = isDuplicate(
         hash,
         embedding,
-        candidates.map((c) => ({
+        candidates.map((c: MemoryResult) => ({
           id: c.entry.id,
           contentHash: c.entry.contentHash,
           embedding: c.entry.embedding,
@@ -179,7 +230,7 @@ export class MemoryManager {
    * Recall memories relevant to a query within a namespace.
    */
   async recall(options: RecallOptions): Promise<MemoryResult[]> {
-    const namespace = options.namespace ?? resolveNamespace();
+    const namespace = options.namespace ?? await this.getNamespace();
     const limit = Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
 
     const queryEmbedding = await this.embeddings.embed(options.query);
@@ -287,7 +338,7 @@ export class MemoryManager {
    * List memory entries with optional filters.
    */
   async list(options: ListOptions): Promise<MemoryEntry[]> {
-    const namespace = options.namespace ?? resolveNamespace();
+    const namespace = options.namespace ?? await this.getNamespace();
 
     const listFn = () =>
       this.store.list({

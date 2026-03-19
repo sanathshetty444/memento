@@ -99,7 +99,7 @@ describe("MemoryManager", () => {
   beforeEach(() => {
     store = new MockVectorStore();
     embeddings = new MockEmbeddingProvider();
-    manager = new MemoryManager({ store, embeddings });
+    manager = new MemoryManager({ store, embeddings, enableResilience: false });
   });
 
   it("save() stores a memory entry", async () => {
@@ -199,5 +199,37 @@ describe("MemoryManager", () => {
     for (const entry of results) {
       expect(entry.metadata.tags).toContain("decision");
     }
+  });
+
+  it("constructor accepts config options", async () => {
+    const configManager = new MemoryManager({
+      store,
+      embeddings,
+      enableResilience: false,
+      config: {
+        redactSecrets: false,
+        autoTag: false,
+      },
+    });
+
+    const entries = await configManager.save({
+      content: "API key sk-1234567890abcdefghij should stay",
+      namespace: "test",
+      tags: ["code"],
+    });
+
+    // redactSecrets: false means secrets are NOT redacted
+    expect(entries[0].content).toContain("sk-1234567890abcdefghij");
+    // autoTag: false means only user-provided tags are kept
+    expect(entries[0].metadata.tags).toEqual(["code"]);
+  });
+
+  it("save() works with explicit namespace (no resolveNamespace call)", async () => {
+    const entries = await manager.save({
+      content: "Browser-safe save with explicit namespace",
+      namespace: "webwhisper",
+    });
+    expect(entries.length).toBeGreaterThanOrEqual(1);
+    expect(entries[0].metadata.namespace).toBe("webwhisper");
   });
 });

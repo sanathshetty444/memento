@@ -1,10 +1,12 @@
 {
-  "name": "memento",
-  "version": "0.1.0",
-  "private": true,
+  "name": "memento-memory",
+  "version": "0.2.0",
   "type": "module",
-  "description": "Claude Code plugin for persistent semantic memory via MCP",
+  "description": "Persistent semantic memory for Claude Code — auto-captures context, survives compaction, zero-config recall",
   "main": "dist/index.js",
+  "bin": {
+    "memento": "dist/cli.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",

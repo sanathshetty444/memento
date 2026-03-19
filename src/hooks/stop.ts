@@ -8,9 +8,14 @@
 import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { execFile } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
 
 interface StopHookInput {
   session_id: string;
+  last_assistant_message: string;
+  cwd: string;
   [key: string]: unknown;
 }
 
@@ -31,10 +36,18 @@ function main(): void {
     const input: StopHookInput = JSON.parse(raw);
     const sessionId = input.session_id ?? "unknown";
 
+    // Capture the last assistant message as session context
+    const lastMsg = input.last_assistant_message ?? "";
+    const summary = lastMsg.length > 2000
+      ? lastMsg.slice(0, 2000) + "\n...[truncated]"
+      : lastMsg;
+
     const entry: QueueEntry = {
       timestamp: new Date().toISOString(),
       toolName: "__session_end__",
-      content: `Session ${sessionId} ended at ${new Date().toISOString()}`,
+      content: summary
+        ? `Session ${sessionId} ended. Last context:\n${summary}`
+        : `Session ${sessionId} ended at ${new Date().toISOString()}`,
       sessionId,
     };
 
@@ -43,6 +56,13 @@ function main(): void {
 
     const queuePath = join(dataDir, "capture-queue.jsonl");
     appendFileSync(queuePath, JSON.stringify(entry) + "\n");
+
+    // Fire-and-forget: trigger queue worker to process captured entries
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const workerPath = join(__dirname, "queue-worker.js");
+    execFile("node", [workerPath], { timeout: 30_000 }, () => {
+      // Intentionally ignore result — best-effort processing
+    });
   } catch {
     // Never block Claude — swallow all errors
   }

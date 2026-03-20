@@ -52,26 +52,81 @@ Written to `~/.config/opencode/opencode.json` under the `mcp` key, merged with e
 
 ### OpenCode Capture Plugin
 
-A standalone JS file installed to `~/.config/opencode/plugins/memento-capture.js`. Not compiled by our build — written as a self-contained file by `memento setup` (or shipped as a template).
+A standalone ESM JS file installed to `~/.config/opencode/plugins/memento-capture.js`. OpenCode loads plugins as ES modules. The file is **not compiled** by our TypeScript build — instead, `src/hooks/opencode-plugin.ts` exports a `generatePluginSource(workerPath: string): string` function that returns the complete JS source. `cli.ts` calls this function and writes the result to disk during setup.
+
+**OpenCode `tool.execute.after` payload shape** (per OpenCode plugin docs):
+```ts
+interface ToolExecuteAfterPayload {
+  tool: {
+    name: string;        // e.g. "Read", "Edit", "Bash"
+    input: unknown;      // tool-specific input object
+  };
+  result: {
+    content: string;     // tool output
+  };
+  metadata?: {
+    sessionId?: string;
+  };
+}
+```
+
+> **Note:** This payload shape must be verified against the actual OpenCode plugin SDK during implementation. If field names differ, the plugin filtering logic must be adapted accordingly. The filtering logic itself (denylist, min output length, skip `memory_*`) is the same as `post-tool-use.ts`.
+
+**`session.idle` semantics:** OpenCode fires `session.idle` when no tool calls or user input have occurred for a configurable idle period. This may fire multiple times per session. The plugin must guard against spawning multiple queue workers — use a simple boolean flag or check for the queue worker lock file before spawning.
 
 The plugin:
-1. Hooks `tool.execute.after` — filters with same logic as `post-tool-use.ts` (denylist, min output length, skip `memory_*`), appends to `~/.claude-memory/capture-queue.jsonl`
-2. Hooks `session.idle` — spawns detached queue worker process (`node dist/hooks/queue-worker.js`), fire-and-forget
+1. Hooks `tool.execute.after` — filters (denylist, min output length, skip `memory_*`), appends to `~/.claude-memory/capture-queue.jsonl`
+2. Hooks `session.idle` — spawns detached queue worker process (guarded against duplicate spawns)
 
 ```js
+import { appendFileSync, mkdirSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
+import { spawn } from "node:child_process";
+
 export default function MementoCapture(context) {
-  const DATA_DIR = path.join(os.homedir(), ".claude-memory");
-  const QUEUE_PATH = path.join(DATA_DIR, "capture-queue.jsonl");
+  const DATA_DIR = join(homedir(), ".claude-memory");
+  const QUEUE_PATH = join(DATA_DIR, "capture-queue.jsonl");
   const DENYLIST = new Set(["Read", "Glob", "Grep", "ls", "cat", "head", "tail"]);
+  const WORKER_PATH = "__WORKER_PATH__"; // replaced by cli.ts at install time
+  let flushing = false;
 
   return {
     hooks: {
       "tool.execute.after": async (payload) => {
-        // Same filtering as post-tool-use.ts
-        // Append to capture-queue.jsonl
+        try {
+          const toolName = payload?.tool?.name ?? "";
+          if (toolName.startsWith("memory_")) return;
+          if (DENYLIST.has(toolName)) return;
+          const output = String(payload?.result?.content ?? "");
+          if (output.length < 50) return;
+
+          const trimmed = output.length > 10000
+            ? output.slice(0, 10000) + "\n...[truncated]"
+            : output;
+          const inputSummary = JSON.stringify(payload?.tool?.input ?? {}).slice(0, 500);
+          const entry = {
+            timestamp: new Date().toISOString(),
+            toolName,
+            content: `[${toolName}] Input: ${inputSummary}\nOutput: ${trimmed}`,
+            sessionId: payload?.metadata?.sessionId ?? "unknown",
+          };
+
+          mkdirSync(DATA_DIR, { recursive: true });
+          appendFileSync(QUEUE_PATH, JSON.stringify(entry) + "\n");
+        } catch {}
       },
       "session.idle": async () => {
-        // Spawn detached queue worker
+        if (flushing) return;
+        flushing = true;
+        try {
+          const child = spawn("node", [WORKER_PATH], {
+            detached: true,
+            stdio: "ignore",
+          });
+          child.unref();
+        } catch {}
+        setTimeout(() => { flushing = false; }, 30000);
       }
     }
   };
@@ -89,7 +144,9 @@ setup():
 
 teardown():
   1. Always teardown Claude Code (existing behavior)
-  2. If OpenCode config exists → remove MCP entry + delete plugin file
+  2. If OpenCode config exists:
+     a. Remove only the "memory" key from mcp in opencode.json (preserve other config)
+     b. Delete ~/.config/opencode/plugins/memento-capture.js
 
 status():
   1. Report Claude Code status (existing)
@@ -101,7 +158,7 @@ status():
 | Action | File | Description |
 |--------|------|-------------|
 | Modify | `src/cli.ts` | Add OpenCode setup/teardown/status logic |
-| Create | `src/hooks/opencode-plugin.ts` | Plugin template (exported as string or compiled to standalone JS) |
+| Create | `src/hooks/opencode-plugin.ts` | Exports `generatePluginSource(workerPath)` — returns standalone ESM JS string for the plugin file |
 | Modify | `README.md` | Document OpenCode support in Quick Start and Architecture |
 | Modify | `CHANGELOG.md` | Add entry under next version |
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Memento CLI — setup and teardown for Claude Code integration.
+ * Memento CLI — setup and teardown for Claude Code & OpenCode integration.
  *
  * Usage:
- *   memento setup     — Configure hooks, MCP server, and CLAUDE.md
+ *   memento setup     — Configure hooks, MCP server, and instructions
  *   memento teardown   — Remove all Memento config (keeps stored memories)
  *   memento status     — Show current installation status
  */
@@ -388,6 +388,25 @@ function status(): void {
     warn("Built files missing — run 'npm run build'");
   }
 
+  // OpenCode status
+  if (existsSync(OPENCODE_CONFIG_DIR)) {
+    console.log("");
+    console.log("  OpenCode:");
+
+    const ocConfig = readJSON(OPENCODE_CONFIG_PATH) as { mcp?: Record<string, unknown> };
+    if (ocConfig.mcp && "memory" in ocConfig.mcp) {
+      success("MCP server configured");
+    } else {
+      warn("MCP server not configured");
+    }
+
+    if (existsSync(OPENCODE_PLUGIN_PATH)) {
+      success("Capture plugin installed");
+    } else {
+      warn("Capture plugin not installed");
+    }
+  }
+
   console.log("");
 }
 
@@ -411,11 +430,11 @@ switch (command) {
   case "--help":
   case "-h":
     console.log(`
-  Memento — Persistent memory for Claude Code
+  Memento — Persistent memory for Claude Code & OpenCode
 
   Usage:
     npx memento-memory              Set up (default)
-    npx memento-memory setup        Set up hooks, MCP server, and CLAUDE.md
+    npx memento-memory setup        Set up hooks, MCP server, and instructions
     npx memento-memory status       Check installation status
     npx memento-memory teardown     Remove all config (keeps stored memories)
 `);

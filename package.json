@@ -1,6 +1,6 @@
 {
   "name": "memento-memory",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "Persistent semantic memory for Claude Code — auto-captures context, survives compaction, zero-config recall",
   "author": "Sanath Shetty <sanathshetty444@gmail.com>",

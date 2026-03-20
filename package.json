@@ -3,18 +3,55 @@
   "version": "0.3.0",
   "type": "module",
   "description": "Persistent semantic memory for Claude Code — auto-captures context, survives compaction, zero-config recall",
+  "author": "Sanath Shetty <sanath@browserstack.com>",
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sanathshetty444/memento.git"
+  },
+  "homepage": "https://github.com/sanathshetty444/memento#readme",
+  "bugs": {
+    "url": "https://github.com/sanathshetty444/memento/issues"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "mcp",
+    "memory",
+    "semantic-memory",
+    "vector-search",
+    "embeddings",
+    "context",
+    "ai-tools",
+    "llm",
+    "rag",
+    "model-context-protocol"
+  ],
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js",
-    "./browser": "./dist/browser.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    }
   },
   "files": [
     "dist",
+    "skills",
+    "plugin.json",
     "README.md",
     "LICENSE"
   ],
   "bin": {
-    "memento": "dist/cli.js"
+    "memento": "dist/cli.js",
+    "memento-memory": "dist/cli.js"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "scripts": {
     "build": "tsc && tsup",
@@ -22,16 +59,19 @@
     "dev": "tsc --watch",
     "start": "node dist/index.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
     "@xenova/transformers": "^2.17.2",
-    "chromadb": "^1.9.2",
-    "chromadb-default-embed": "^2.13.2",
     "idb": "^8.0.3",
     "uuid": "^11.1.0",
     "zod": "^3.23.0"
+  },
+  "optionalDependencies": {
+    "chromadb": "^1.9.2",
+    "chromadb-default-embed": "^2.13.2"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

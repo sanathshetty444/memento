@@ -18,17 +18,27 @@ Memento captures conversation context, decisions, and code knowledge into a vect
 ## Quick Start
 
 ```bash
-# Clone and install
+# One command — that's it
+npx memento-memory
+```
+
+Or install globally:
+
+```bash
+npm install -g memento-memory
+memento setup
+```
+
+Or from source:
+
+```bash
 git clone https://github.com/sanathshetty444/memento.git
 cd memento
-npm install
-npm run build
-
-# One command setup — done
+npm install && npm run build
 node dist/cli.js setup
 ```
 
-That's it. Your next Claude Code session will automatically capture and recall context.
+Your next Claude Code session will automatically capture and recall context.
 
 ### What `memento setup` configures
 
@@ -42,18 +52,9 @@ That's it. Your next Claude Code session will automatically capture and recall c
 ### CLI Commands
 
 ```bash
-node dist/cli.js setup       # Configure everything (idempotent, safe to re-run)
-node dist/cli.js status      # Check what's configured
-node dist/cli.js teardown    # Remove config (keeps stored memories)
-```
-
-### After npm global install
-
-```bash
-npm install -g .
-memento setup
-memento status
-memento teardown
+npx memento-memory              # Setup (default, idempotent, safe to re-run)
+npx memento-memory status       # Check what's configured
+npx memento-memory teardown     # Remove config (keeps stored memories)
 ```
 
 ## How it works
@@ -186,4 +187,4 @@ npx tsc --noEmit     # Type-check only
 
 ## License
 
-MIT
+This project is licensed under the [AGPL-3.0](LICENSE).

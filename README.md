@@ -1,3 +1,7 @@
+[![npm version](https://img.shields.io/npm/v/memento-memory)](https://www.npmjs.com/package/memento-memory)
+[![CI](https://github.com/sanathshetty444/memento/actions/workflows/ci.yml/badge.svg)](https://github.com/sanathshetty444/memento/actions/workflows/ci.yml)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+
 # Memento
 
 Persistent semantic memory for Claude Code. Save, recall, and search context across sessions — even after autocompact.
@@ -14,17 +18,30 @@ Memento captures conversation context, decisions, and code knowledge into a vect
 - **Sensitive data redaction** — API keys, tokens, passwords stripped before storage
 - **Deduplication** — hash + cosine similarity prevents redundant entries
 - **Local-first** — works offline with local embeddings, zero API keys required
+- **Browser-compatible** — runs in browsers and extensions via IndexedDB + fetch-based embeddings
 
 ## Quick Start
 
+> Requires Node.js >= 20
+
 ```bash
-# Clone and install
+# One command — that's it
+npx memento-memory setup
+```
+
+Or install globally:
+
+```bash
+npm install -g memento-memory
+memento setup
+```
+
+Or from source:
+
+```bash
 git clone https://github.com/sanathshetty444/memento.git
 cd memento
-npm install
-npm run build
-
-# One command setup — done
+npm install && npm run build
 node dist/cli.js setup
 ```
 
@@ -42,19 +59,12 @@ That's it. Your next Claude Code session will automatically capture and recall c
 ### CLI Commands
 
 ```bash
-node dist/cli.js setup       # Configure everything (idempotent, safe to re-run)
-node dist/cli.js status      # Check what's configured
-node dist/cli.js teardown    # Remove config (keeps stored memories)
+memento setup       # Configure everything (idempotent, safe to re-run)
+memento status      # Check what's configured
+memento teardown    # Remove config (keeps stored memories)
 ```
 
-### After npm global install
-
-```bash
-npm install -g .
-memento setup
-memento status
-memento teardown
-```
+All commands also work with `npx memento-memory <command>`.
 
 ## How it works
 
@@ -114,19 +124,21 @@ memento teardown
 
 ## Storage Backends
 
-| Backend | Status | Description |
-|---------|--------|-------------|
-| **Local files** | Default | JSON files at `~/.claude-memory/store/`, zero config |
-| **ChromaDB** | Optional | HTTP-based vector DB (needs running server) |
-| **Neo4j** | Optional | Graph-enhanced retrieval with relationships |
+| Backend | Status | Environment | Description |
+|---------|--------|-------------|-------------|
+| **Local files** | Default | Node.js | JSON files at `~/.claude-memory/store/`, zero config |
+| **IndexedDB** | Default | Browser | Browser-native storage, zero config |
+| **ChromaDB** | Optional | Node.js | HTTP-based vector DB (needs running server) |
+| **Neo4j** | Optional | Node.js | Graph-enhanced retrieval with relationships |
 
 ## Embedding Providers
 
-| Provider | Dimensions | Cost | Description |
-|----------|-----------|------|-------------|
-| **Local** (default) | 384 | Free | Transformers.js, all-MiniLM-L6-v2, offline |
-| **Gemini** | 768 | Free tier | `text-embedding-004` |
-| **OpenAI** | 1536 | Paid | `text-embedding-3-small` |
+| Provider | Dimensions | Cost | Environment | Description |
+|----------|-----------|------|-------------|-------------|
+| **Local** (default) | 384 | Free | Node.js | Transformers.js, all-MiniLM-L6-v2, offline |
+| **Gemini** | 768 | Free tier | Node.js | `text-embedding-004` via SDK |
+| **Gemini Fetch** | 768 | Free tier | Browser | `text-embedding-004` via fetch API |
+| **OpenAI** | 1536 | Paid | Node.js | `text-embedding-3-small` |
 
 ## Configuration
 
@@ -149,6 +161,23 @@ Config is loaded from: env vars → `~/.claude-memory/config.json` → defaults.
 
 See `Techspec.md` for full config reference.
 
+## Browser Usage
+
+Memento runs in browsers and Chrome extensions via a dedicated entry point:
+
+```typescript
+import { MemoryManager, IndexedDBAdapter, GeminiFetchEmbeddingProvider } from "memento-memory/browser";
+
+const store = new IndexedDBAdapter({ dbName: "my-app-memory" });
+const embeddings = new GeminiFetchEmbeddingProvider({ apiKey: "your-gemini-key" });
+
+const manager = new MemoryManager({ store, embeddings });
+await manager.save({ content: "important context", tags: ["decision"] });
+const results = await manager.recall("what was decided?");
+```
+
+The browser bundle is ~29KB ESM with zero Node.js dependencies. Uses IndexedDB for storage and the Gemini REST API (via `fetch`) for embeddings.
+
 ## Architecture
 
 ```
@@ -159,16 +188,20 @@ Memento
   ├── Memory Manager (orchestrator)
   │   └── Redaction → Tagging → Chunking → Dedup → Embed → Store
   ├── Storage (pluggable)
-  │   ├── Local files (default)
+  │   ├── Local files (default, Node.js)
+  │   ├── IndexedDB (default, browser)
   │   ├── ChromaDB (optional)
   │   └── Neo4j (optional)
   ├── Embeddings (pluggable)
-  │   ├── Local/Transformers.js (default)
-  │   ├── Gemini (optional)
+  │   ├── Local/Transformers.js (default, Node.js)
+  │   ├── Gemini Fetch (browser)
+  │   ├── Gemini SDK (optional)
   │   └── OpenAI (optional)
   ├── Hooks (auto-capture)
   │   ├── PostToolUse → capture queue
   │   └── Stop → session summary + queue processing
+  ├── Browser Bundle (ESM, ~29KB)
+  │   └── import from "memento-memory/browser"
   └── Resilience
       ├── Circuit breaker
       ├── Write-ahead log
@@ -178,12 +211,24 @@ Memento
 ## Development
 
 ```bash
-npm run build        # Compile TypeScript
+npm install          # Install dependencies
+npm run build        # Compile TypeScript + browser bundle
 npm test             # Run tests (99 tests)
+npm test -- --coverage  # Run with coverage report
 npm run test:watch   # Watch mode
+npm run lint         # Lint with ESLint
+npm run lint:fix     # Lint and auto-fix
+npm run format       # Format with Prettier
+npm run format:check # Check formatting
 npx tsc --noEmit     # Type-check only
 ```
 
+Pre-commit hooks (husky + lint-staged) auto-fix formatting on commit. CI runs lint, typecheck, tests (Node 20 + 22), and build on every PR.
+
+## Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
 ## License
 
-MIT
+This project is licensed under the [AGPL-3.0](LICENSE).

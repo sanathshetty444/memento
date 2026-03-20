@@ -8,18 +8,14 @@ export async function createStore(config: {
 }): Promise<VectorStore> {
   if (config.type === "local") {
     const { LocalFileAdapter } = await import("./local-file-adapter.js");
-    const store = new LocalFileAdapter(
-      config.local ?? { path: "~/.claude-memory/store" }
-    );
+    const store = new LocalFileAdapter(config.local ?? { path: "~/.claude-memory/store" });
     await store.initialize();
     return store;
   }
 
   if (config.type === "chromadb") {
     const { ChromaDBAdapter } = await import("./chromadb-adapter.js");
-    const store = new ChromaDBAdapter(
-      config.chromadb ?? { path: "~/.claude-memory/chromadb" }
-    );
+    const store = new ChromaDBAdapter(config.chromadb ?? { path: "~/.claude-memory/chromadb" });
     await store.initialize();
     return store;
   }
@@ -27,7 +23,7 @@ export async function createStore(config: {
   if (config.type === "neo4j") {
     const { Neo4jAdapter } = await import("./neo4j-adapter.js");
     const store = new Neo4jAdapter(
-      config.neo4j ?? { url: "bolt://localhost:7687", username: "neo4j", password: "" }
+      config.neo4j ?? { url: "bolt://localhost:7687", username: "neo4j", password: "" },
     );
     await store.initialize();
     return store;

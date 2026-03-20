@@ -1,11 +1,5 @@
 import { randomUUID } from "node:crypto";
-import {
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 
@@ -21,8 +15,7 @@ export class WriteAheadLog {
   private filePath: string;
 
   constructor(filePath?: string) {
-    this.filePath =
-      filePath ?? join(homedir(), ".claude-memory", "wal.jsonl");
+    this.filePath = filePath ?? join(homedir(), ".claude-memory", "wal.jsonl");
 
     const dir = dirname(this.filePath);
     if (!existsSync(dir)) {
@@ -98,9 +91,7 @@ export class WriteAheadLog {
 
   private writeAll(entries: WALEntry[]): void {
     const content =
-      entries.length > 0
-        ? entries.map((e) => JSON.stringify(e)).join("\n") + "\n"
-        : "";
+      entries.length > 0 ? entries.map((e) => JSON.stringify(e)).join("\n") + "\n" : "";
     writeFileSync(this.filePath, content, "utf-8");
   }
 }

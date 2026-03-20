@@ -1,11 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { MemoryManager } from "../../src/memory/memory-manager.js";
 import { compactMemories } from "../../src/memory/compactor.js";
-import type {
-  VectorStore,
-  SearchFilters,
-  ListFilters,
-} from "../../src/storage/interface.js";
+import type { VectorStore, SearchFilters, ListFilters } from "../../src/storage/interface.js";
 import type { EmbeddingProvider } from "../../src/embeddings/interface.js";
 import type { MemoryEntry, MemoryResult } from "../../src/memory/types.js";
 
@@ -27,16 +23,11 @@ class MockVectorStore implements VectorStore {
     }
   }
 
-  async search(
-    queryEmbedding: number[],
-    filters: SearchFilters,
-  ): Promise<MemoryResult[]> {
+  async search(queryEmbedding: number[], filters: SearchFilters): Promise<MemoryResult[]> {
     let results = this.entries;
 
     if (filters.namespace) {
-      results = results.filter(
-        (e) => e.metadata.namespace === filters.namespace,
-      );
+      results = results.filter((e) => e.metadata.namespace === filters.namespace);
     }
     if (filters.tags) {
       results = results.filter((e) =>
@@ -63,9 +54,7 @@ class MockVectorStore implements VectorStore {
     let results = this.entries;
 
     if (filters.namespace) {
-      results = results.filter(
-        (e) => e.metadata.namespace === filters.namespace,
-      );
+      results = results.filter((e) => e.metadata.namespace === filters.namespace);
     }
     if (filters.tags) {
       results = results.filter((e) =>
@@ -78,8 +67,7 @@ class MockVectorStore implements VectorStore {
 
   async count(namespace?: string): Promise<number> {
     if (namespace) {
-      return this.entries.filter((e) => e.metadata.namespace === namespace)
-        .length;
+      return this.entries.filter((e) => e.metadata.namespace === namespace).length;
     }
     return this.entries.length;
   }
@@ -135,9 +123,7 @@ describe("Full Pipeline Integration", () => {
       });
 
       expect(results.length).toBeGreaterThanOrEqual(1);
-      expect(
-        results.some((r) => r.entry.content.includes("JWT")),
-      ).toBe(true);
+      expect(results.some((r) => r.entry.content.includes("JWT"))).toBe(true);
     });
 
     it("saves and recalls across multiple entries", async () => {
@@ -227,25 +213,20 @@ describe("Full Pipeline Integration", () => {
   describe("redaction", () => {
     it("strips sensitive data before storage", async () => {
       const entries = await manager.save({
-        content:
-          "Use this API key: sk-abc123def456ghi789jkl012 to access the service",
+        content: "Use this API key: sk-abc123def456ghi789jkl012 to access the service",
         namespace: "test-project",
       });
 
       expect(entries.length).toBeGreaterThanOrEqual(1);
       expect(entries[0].content).toContain("[REDACTED:API_KEY]");
-      expect(entries[0].content).not.toContain(
-        "sk-abc123def456ghi789jkl012",
-      );
+      expect(entries[0].content).not.toContain("sk-abc123def456ghi789jkl012");
 
       // Also verify via recall
       const results = await manager.recall({
         query: "API key",
         namespace: "test-project",
       });
-      expect(results[0].entry.content).not.toContain(
-        "sk-abc123def456ghi789jkl012",
-      );
+      expect(results[0].entry.content).not.toContain("sk-abc123def456ghi789jkl012");
     });
   });
 
@@ -256,8 +237,7 @@ describe("Full Pipeline Integration", () => {
     it("applies correct tags based on content", async () => {
       // Error content
       const errorEntries = await manager.save({
-        content:
-          "Got an error: TypeError — cannot read property of undefined in handler.ts",
+        content: "Got an error: TypeError — cannot read property of undefined in handler.ts",
         namespace: "test-project",
       });
       expect(errorEntries[0].metadata.tags).toContain("error");
@@ -276,10 +256,7 @@ describe("Full Pipeline Integration", () => {
   // -----------------------------------------------------------------------
   describe("chunking", () => {
     it("chunks long content into multiple entries", async () => {
-      const longContent = Array.from(
-        { length: 1500 },
-        (_, i) => `word${i}`,
-      ).join(" ");
+      const longContent = Array.from({ length: 1500 }, (_, i) => `word${i}`).join(" ");
 
       const entries = await manager.save({
         content: longContent,
@@ -333,9 +310,7 @@ describe("Full Pipeline Integration", () => {
   describe("compaction", () => {
     it("removes expired entries", async () => {
       // Insert entries with old timestamps directly into the store
-      const oldDate = new Date(
-        Date.now() - 200 * 24 * 60 * 60 * 1000,
-      ).toISOString(); // 200 days ago
+      const oldDate = new Date(Date.now() - 200 * 24 * 60 * 60 * 1000).toISOString(); // 200 days ago
 
       store.entries.push({
         id: "old-1",
@@ -360,7 +335,7 @@ describe("Full Pipeline Integration", () => {
       const totalBefore = store.entries.length;
       expect(totalBefore).toBe(2);
 
-      const result = await compactMemories(store, embeddings, {
+      const result = await compactMemories(store, {
         namespace: "test-project",
         ttlDays: 180, // 200-day-old entry exceeds this
       });
@@ -381,9 +356,7 @@ describe("Full Pipeline Integration", () => {
           metadata: {
             namespace: "test-project",
             tags: [],
-            timestamp: new Date(
-              Date.now() - (5 - i) * 60 * 60 * 1000,
-            ).toISOString(), // older first
+            timestamp: new Date(Date.now() - (5 - i) * 60 * 60 * 1000).toISOString(), // older first
             source: "explicit",
             summary: `entry ${i}`,
           },
@@ -392,7 +365,7 @@ describe("Full Pipeline Integration", () => {
 
       expect(store.entries.length).toBe(5);
 
-      const result = await compactMemories(store, embeddings, {
+      const result = await compactMemories(store, {
         namespace: "test-project",
         maxEntries: 3,
       });

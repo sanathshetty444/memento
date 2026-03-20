@@ -1,10 +1,6 @@
 import type { ChromaClient as ChromaClientType, Collection, IEmbeddingFunction } from "chromadb";
 import type { MemoryEntry, MemoryMetadata, MemorySource } from "../memory/types.js";
-import type {
-  VectorStore,
-  SearchFilters,
-  ListFilters,
-} from "./interface.js";
+import type { VectorStore, SearchFilters, ListFilters } from "./interface.js";
 import type { MemoryResult } from "../memory/types.js";
 import { mkdirSync } from "node:fs";
 
@@ -29,7 +25,7 @@ function sanitizeCollectionName(namespace: string): string {
 
 function serializeMetadata(
   metadata: MemoryMetadata,
-  extra: { contentHash: string; parentId?: string }
+  extra: { contentHash: string; parentId?: string },
 ): Record<string, string | number | boolean> {
   const flat: Record<string, string | number | boolean> = {};
 
@@ -59,9 +55,11 @@ function serializeMetadata(
   return flat;
 }
 
-function deserializeMetadata(
-  flat: Record<string, string | number | boolean>
-): { metadata: MemoryMetadata; contentHash: string; parentId?: string } {
+function deserializeMetadata(flat: Record<string, string | number | boolean>): {
+  metadata: MemoryMetadata;
+  contentHash: string;
+  parentId?: string;
+} {
   const metadata: MemoryMetadata = {
     namespace: flat.namespace as string,
     tags: [],
@@ -80,9 +78,7 @@ function deserializeMetadata(
   for (const key of ARRAY_METADATA_KEYS) {
     if (flat[key] !== undefined) {
       try {
-        (metadata as unknown as Record<string, unknown>)[key] = JSON.parse(
-          flat[key] as string
-        );
+        (metadata as unknown as Record<string, unknown>)[key] = JSON.parse(flat[key] as string);
       } catch {
         // If parsing fails, wrap as single-element array for tags, ignore others
         if (key === "tags") {
@@ -121,18 +117,14 @@ export class ChromaDBAdapter implements VectorStore {
 
   private getClient(): ChromaClientType {
     if (!this.client) {
-      throw new Error(
-        "ChromaDB client not initialized. Call initialize() first."
-      );
+      throw new Error("ChromaDB client not initialized. Call initialize() first.");
     }
     return this.client;
   }
 
   private getEmbeddingFunction(): IEmbeddingFunction {
     if (!this.embeddingFunction) {
-      throw new Error(
-        "Embedding function not initialized. Call initialize() first."
-      );
+      throw new Error("Embedding function not initialized. Call initialize() first.");
     }
     return this.embeddingFunction;
   }
@@ -180,10 +172,7 @@ export class ChromaDBAdapter implements VectorStore {
     await collection.upsert(params);
   }
 
-  async search(
-    queryEmbedding: number[],
-    filters: SearchFilters
-  ): Promise<MemoryResult[]> {
+  async search(queryEmbedding: number[], filters: SearchFilters): Promise<MemoryResult[]> {
     if (!filters.namespace) {
       return this.searchAllCollections(queryEmbedding, filters);
     }
@@ -194,7 +183,7 @@ export class ChromaDBAdapter implements VectorStore {
 
   private async searchAllCollections(
     queryEmbedding: number[],
-    filters: SearchFilters
+    filters: SearchFilters,
   ): Promise<MemoryResult[]> {
     const client = this.getClient();
     const allCollections = await client.listCollections();
@@ -202,12 +191,11 @@ export class ChromaDBAdapter implements VectorStore {
 
     for (const col of allCollections) {
       try {
-        const collection = await client.getCollection({ name: col, embeddingFunction: this.getEmbeddingFunction() });
-        const results = await this.searchCollection(
-          collection,
-          queryEmbedding,
-          filters
-        );
+        const collection = await client.getCollection({
+          name: col,
+          embeddingFunction: this.getEmbeddingFunction(),
+        });
+        const results = await this.searchCollection(collection, queryEmbedding, filters);
         allResults.push(...results);
       } catch {
         // Skip collections that fail
@@ -222,7 +210,7 @@ export class ChromaDBAdapter implements VectorStore {
   private async searchCollection(
     collection: Collection,
     queryEmbedding: number[],
-    filters: SearchFilters
+    filters: SearchFilters,
   ): Promise<MemoryResult[]> {
     const whereConditions = this.buildWhereClause(filters);
 
@@ -253,12 +241,8 @@ export class ChromaDBAdapter implements VectorStore {
     const embeddings = results.embeddings?.[0] ?? [];
 
     for (let i = 0; i < ids.length; i++) {
-      const rawMeta = (metadatas[i] ?? {}) as Record<
-        string,
-        string | number | boolean
-      >;
-      const { metadata, contentHash, parentId } =
-        deserializeMetadata(rawMeta);
+      const rawMeta = (metadatas[i] ?? {}) as Record<string, string | number | boolean>;
+      const { metadata, contentHash, parentId } = deserializeMetadata(rawMeta);
 
       const entry: MemoryEntry = {
         id: ids[i],
@@ -285,7 +269,7 @@ export class ChromaDBAdapter implements VectorStore {
   }
 
   private buildWhereClause(
-    filters: SearchFilters | ListFilters
+    filters: SearchFilters | ListFilters,
   ): Record<string, unknown> | undefined {
     const conditions: Record<string, unknown>[] = [];
 
@@ -320,7 +304,10 @@ export class ChromaDBAdapter implements VectorStore {
 
     for (const col of allCollections) {
       try {
-        const collection = await client.getCollection({ name: col, embeddingFunction: this.getEmbeddingFunction() });
+        const collection = await client.getCollection({
+          name: col,
+          embeddingFunction: this.getEmbeddingFunction(),
+        });
         // Check if the ID exists in this collection
         const result = await collection.get({ ids: [id] });
         if (result.ids && result.ids.length > 0) {
@@ -344,16 +331,17 @@ export class ChromaDBAdapter implements VectorStore {
     return this.listFromCollection(collection, filters);
   }
 
-  private async listAllCollections(
-    filters: ListFilters
-  ): Promise<MemoryEntry[]> {
+  private async listAllCollections(filters: ListFilters): Promise<MemoryEntry[]> {
     const client = this.getClient();
     const allCollections = await client.listCollections();
     const allEntries: MemoryEntry[] = [];
 
     for (const col of allCollections) {
       try {
-        const collection = await client.getCollection({ name: col, embeddingFunction: this.getEmbeddingFunction() });
+        const collection = await client.getCollection({
+          name: col,
+          embeddingFunction: this.getEmbeddingFunction(),
+        });
         const entries = await this.listFromCollection(collection, {
           ...filters,
           // Fetch more than needed; sort and slice after merging
@@ -368,9 +356,7 @@ export class ChromaDBAdapter implements VectorStore {
 
     // Sort by timestamp descending
     allEntries.sort(
-      (a, b) =>
-        new Date(b.metadata.timestamp).getTime() -
-        new Date(a.metadata.timestamp).getTime()
+      (a, b) => new Date(b.metadata.timestamp).getTime() - new Date(a.metadata.timestamp).getTime(),
     );
 
     return allEntries.slice(filters.offset, filters.offset + filters.limit);
@@ -378,7 +364,7 @@ export class ChromaDBAdapter implements VectorStore {
 
   private async listFromCollection(
     collection: Collection,
-    filters: ListFilters
+    filters: ListFilters,
   ): Promise<MemoryEntry[]> {
     const whereConditions = this.buildWhereClause(filters);
 
@@ -406,12 +392,8 @@ export class ChromaDBAdapter implements VectorStore {
     const entries: MemoryEntry[] = [];
 
     for (let i = 0; i < results.ids.length; i++) {
-      const rawMeta = (results.metadatas?.[i] ?? {}) as Record<
-        string,
-        string | number | boolean
-      >;
-      const { metadata, contentHash, parentId } =
-        deserializeMetadata(rawMeta);
+      const rawMeta = (results.metadatas?.[i] ?? {}) as Record<string, string | number | boolean>;
+      const { metadata, contentHash, parentId } = deserializeMetadata(rawMeta);
 
       entries.push({
         id: results.ids[i],
@@ -424,9 +406,7 @@ export class ChromaDBAdapter implements VectorStore {
 
     // Sort by timestamp descending
     entries.sort(
-      (a, b) =>
-        new Date(b.metadata.timestamp).getTime() -
-        new Date(a.metadata.timestamp).getTime()
+      (a, b) => new Date(b.metadata.timestamp).getTime() - new Date(a.metadata.timestamp).getTime(),
     );
 
     return entries.slice(filters.offset, filters.offset + filters.limit);
@@ -445,7 +425,10 @@ export class ChromaDBAdapter implements VectorStore {
 
     for (const col of allCollections) {
       try {
-        const collection = await client.getCollection({ name: col, embeddingFunction: this.getEmbeddingFunction() });
+        const collection = await client.getCollection({
+          name: col,
+          embeddingFunction: this.getEmbeddingFunction(),
+        });
         total += await collection.count();
       } catch {
         // Skip collections that fail

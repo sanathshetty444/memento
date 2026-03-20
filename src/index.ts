@@ -35,7 +35,7 @@ async function main() {
     version: "0.3.0",
   });
 
-  registerAllTools(server, manager, embeddings);
+  registerAllTools(server, manager);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
@@ -54,6 +54,8 @@ process.on("uncaughtException", (err) => {
 });
 
 process.on("unhandledRejection", (reason) => {
-  process.stderr.write(`Unhandled rejection: ${reason instanceof Error ? reason.message : String(reason)}\n`);
+  process.stderr.write(
+    `Unhandled rejection: ${reason instanceof Error ? reason.message : String(reason)}\n`,
+  );
   process.exit(1);
 });

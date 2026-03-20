@@ -55,9 +55,7 @@ export class IndexedDBVectorStore implements VectorStore {
 
     for (const entry of entries) {
       if (!this.matchesSearchFilters(entry, filters)) continue;
-      const score = entry.embedding
-        ? cosineSimilarity(queryEmbedding, entry.embedding)
-        : 0;
+      const score = entry.embedding ? cosineSimilarity(queryEmbedding, entry.embedding) : 0;
       scored.push({ entry, score });
     }
 
@@ -77,8 +75,8 @@ export class IndexedDBVectorStore implements VectorStore {
     const entries = await this.getAllFiltered(filters.namespace);
     const filtered = entries.filter((e) => this.matchesListFilters(e, filters));
 
-    filtered.sort((a, b) =>
-      new Date(b.metadata.timestamp).getTime() - new Date(a.metadata.timestamp).getTime()
+    filtered.sort(
+      (a, b) => new Date(b.metadata.timestamp).getTime() - new Date(a.metadata.timestamp).getTime(),
     );
 
     return filtered.slice(filters.offset, filters.offset + filters.limit);

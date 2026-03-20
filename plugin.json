@@ -22,8 +22,5 @@
       }
     ]
   },
-  "skills": [
-    "skills/recall.md",
-    "skills/remember.md"
-  ]
+  "skills": ["skills/recall.md", "skills/remember.md"]
 }

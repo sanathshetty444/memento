@@ -7,10 +7,7 @@ export function registerListTool(server: McpServer, manager: MemoryManager) {
     "memory_list",
     "List memory entries with optional filtering by namespace and tags",
     {
-      namespace: z
-        .string()
-        .optional()
-        .describe("Project namespace (auto-detected if omitted)"),
+      namespace: z.string().optional().describe("Project namespace (auto-detected if omitted)"),
       tags: z
         .array(
           z.enum([
@@ -26,10 +23,7 @@ export function registerListTool(server: McpServer, manager: MemoryManager) {
         )
         .optional()
         .describe("Filter by semantic tags"),
-      limit: z
-        .number()
-        .optional()
-        .describe("Maximum number of results (default 10, max 100)"),
+      limit: z.number().optional().describe("Maximum number of results (default 10, max 100)"),
       offset: z
         .number()
         .optional()
@@ -55,10 +49,7 @@ export function registerListTool(server: McpServer, manager: MemoryManager) {
       }
 
       const formatted = entries.map((entry, i) => {
-        const tags =
-          entry.metadata.tags.length > 0
-            ? entry.metadata.tags.join(", ")
-            : "none";
+        const tags = entry.metadata.tags.length > 0 ? entry.metadata.tags.join(", ") : "none";
         return [
           `--- Entry ${i + 1} ---`,
           `ID: ${entry.id}`,

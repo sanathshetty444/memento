@@ -14,9 +14,9 @@ const TAG_RULES: TagRule[] = [
   {
     tag: "code",
     patterns: [
-      /```/,                                        // code fences
+      /```/, // code fences
       /\.\b(ts|js|py|rs|go|java|rb|cpp|c|h|tsx|jsx|vue|svelte|css|html|sql|sh|yaml|yml|toml|json)\b/, // file extensions
-      /\b(function|const|let|var|def|class|import|export|return|async|await)\s/,  // keywords / signatures
+      /\b(function|const|let|var|def|class|import|export|return|async|await)\s/, // keywords / signatures
     ],
   },
   {
@@ -58,18 +58,18 @@ const TAG_RULES: TagRule[] = [
   {
     tag: "config",
     patterns: [
-      /\$[A-Z_]+/,                  // env vars like $HOME
-      /process\.env\b/,             // Node env access
-      /\.(json|yaml|yml|env)\b.*config/i,  // config file refs
-      /config\b.*\.(json|yaml|yml|env)/i,  // config file refs (reversed)
+      /\$[A-Z_]+/, // env vars like $HOME
+      /process\.env\b/, // Node env access
+      /\.(json|yaml|yml|env)\b.*config/i, // config file refs
+      /config\b.*\.(json|yaml|yml|env)/i, // config file refs (reversed)
       /\bsetting\b/i,
     ],
   },
   {
     tag: "dependency",
     patterns: [
-      /@[\w-]+\/[\w-]+/,            // scoped packages @scope/pkg
-      /\^\d+\.\d+\.\d+/,           // version numbers ^1.2.3
+      /@[\w-]+\/[\w-]+/, // scoped packages @scope/pkg
+      /\^\d+\.\d+\.\d+/, // version numbers ^1.2.3
       /\binstall\b/i,
       /\bupgrade\b/i,
       /\bnpm\b/,
@@ -78,14 +78,7 @@ const TAG_RULES: TagRule[] = [
   },
   {
     tag: "todo",
-    patterns: [
-      /\bTODO\b/,
-      /\bFIXME\b/,
-      /\bHACK\b/,
-      /\bneed\s+to\b/i,
-      /\bshould\b/i,
-      /\bmust\b/i,
-    ],
+    patterns: [/\bTODO\b/, /\bFIXME\b/, /\bHACK\b/, /\bneed\s+to\b/i, /\bshould\b/i, /\bmust\b/i],
   },
 ];
 

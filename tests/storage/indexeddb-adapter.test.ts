@@ -47,10 +47,20 @@ describe("IndexedDBVectorStore", () => {
 
   it("search filters by namespace", async () => {
     const e1 = makeEntry({
-      metadata: { namespace: "ns-a", tags: [], timestamp: new Date().toISOString(), source: "explicit" },
+      metadata: {
+        namespace: "ns-a",
+        tags: [],
+        timestamp: new Date().toISOString(),
+        source: "explicit",
+      },
     });
     const e2 = makeEntry({
-      metadata: { namespace: "ns-b", tags: [], timestamp: new Date().toISOString(), source: "explicit" },
+      metadata: {
+        namespace: "ns-b",
+        tags: [],
+        timestamp: new Date().toISOString(),
+        source: "explicit",
+      },
     });
     await store.upsert(e1);
     await store.upsert(e2);
@@ -65,10 +75,20 @@ describe("IndexedDBVectorStore", () => {
 
   it("search filters by tags", async () => {
     const e1 = makeEntry({
-      metadata: { namespace: "ns", tags: ["code"], timestamp: new Date().toISOString(), source: "explicit" },
+      metadata: {
+        namespace: "ns",
+        tags: ["code"],
+        timestamp: new Date().toISOString(),
+        source: "explicit",
+      },
     });
     const e2 = makeEntry({
-      metadata: { namespace: "ns", tags: ["decision"], timestamp: new Date().toISOString(), source: "explicit" },
+      metadata: {
+        namespace: "ns",
+        tags: ["decision"],
+        timestamp: new Date().toISOString(),
+        source: "explicit",
+      },
     });
     await store.upsert(e1);
     await store.upsert(e2);
@@ -84,10 +104,20 @@ describe("IndexedDBVectorStore", () => {
 
   it("search filters by time range", async () => {
     const old = makeEntry({
-      metadata: { namespace: "ns", tags: [], timestamp: "2025-01-01T00:00:00Z", source: "explicit" },
+      metadata: {
+        namespace: "ns",
+        tags: [],
+        timestamp: "2025-01-01T00:00:00Z",
+        source: "explicit",
+      },
     });
     const recent = makeEntry({
-      metadata: { namespace: "ns", tags: [], timestamp: "2026-03-19T00:00:00Z", source: "explicit" },
+      metadata: {
+        namespace: "ns",
+        tags: [],
+        timestamp: "2026-03-19T00:00:00Z",
+        source: "explicit",
+      },
     });
     await store.upsert(old);
     await store.upsert(recent);
@@ -130,20 +160,52 @@ describe("IndexedDBVectorStore", () => {
   });
 
   it("list filters by tags", async () => {
-    await store.upsert(makeEntry({
-      metadata: { namespace: "ns", tags: ["code"], timestamp: new Date().toISOString(), source: "explicit" },
-    }));
-    await store.upsert(makeEntry({
-      metadata: { namespace: "ns", tags: ["error"], timestamp: new Date().toISOString(), source: "explicit" },
-    }));
+    await store.upsert(
+      makeEntry({
+        metadata: {
+          namespace: "ns",
+          tags: ["code"],
+          timestamp: new Date().toISOString(),
+          source: "explicit",
+        },
+      }),
+    );
+    await store.upsert(
+      makeEntry({
+        metadata: {
+          namespace: "ns",
+          tags: ["error"],
+          timestamp: new Date().toISOString(),
+          source: "explicit",
+        },
+      }),
+    );
 
     const results = await store.list({ namespace: "ns", tags: ["code"], limit: 10, offset: 0 });
     expect(results.length).toBe(1);
   });
 
   it("count returns total entries", async () => {
-    await store.upsert(makeEntry({ metadata: { namespace: "a", tags: [], timestamp: new Date().toISOString(), source: "explicit" } }));
-    await store.upsert(makeEntry({ metadata: { namespace: "b", tags: [], timestamp: new Date().toISOString(), source: "explicit" } }));
+    await store.upsert(
+      makeEntry({
+        metadata: {
+          namespace: "a",
+          tags: [],
+          timestamp: new Date().toISOString(),
+          source: "explicit",
+        },
+      }),
+    );
+    await store.upsert(
+      makeEntry({
+        metadata: {
+          namespace: "b",
+          tags: [],
+          timestamp: new Date().toISOString(),
+          source: "explicit",
+        },
+      }),
+    );
 
     expect(await store.count()).toBe(2);
     expect(await store.count("a")).toBe(1);

@@ -9,8 +9,15 @@
  *       <id>.json   — one MemoryEntry per file
  */
 
-import { readFileSync, writeFileSync, unlinkSync, mkdirSync, readdirSync, existsSync } from "node:fs";
-import { join, basename } from "node:path";
+import {
+  readFileSync,
+  writeFileSync,
+  unlinkSync,
+  mkdirSync,
+  readdirSync,
+  existsSync,
+} from "node:fs";
+import { join } from "node:path";
 import { homedir } from "node:os";
 import type { MemoryEntry, MemoryResult, MemoryTag } from "../memory/types.js";
 import type { VectorStore, SearchFilters, ListFilters } from "./interface.js";
@@ -54,14 +61,14 @@ export class LocalFileAdapter implements VectorStore {
   private listNamespaces(): string[] {
     if (!existsSync(this.dataDir)) return [];
     return readdirSync(this.dataDir, { withFileTypes: true })
-      .filter(d => d.isDirectory())
-      .map(d => d.name);
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
   }
 
   private readAllEntries(namespace: string): MemoryEntry[] {
     const dir = this.namespacePath(namespace);
     if (!existsSync(dir)) return [];
-    const files = readdirSync(dir).filter(f => f.endsWith(".json"));
+    const files = readdirSync(dir).filter((f) => f.endsWith(".json"));
     const entries: MemoryEntry[] = [];
     for (const file of files) {
       const entry = this.readEntry(join(dir, file));
@@ -87,9 +94,7 @@ export class LocalFileAdapter implements VectorStore {
       const entries = this.readAllEntries(ns);
       for (const entry of entries) {
         if (!this.matchesFilters(entry, filters)) continue;
-        const score = entry.embedding
-          ? cosineSimilarity(queryEmbedding, entry.embedding)
-          : 0;
+        const score = entry.embedding ? cosineSimilarity(queryEmbedding, entry.embedding) : 0;
         scored.push({ entry, score });
       }
     }
@@ -114,7 +119,7 @@ export class LocalFileAdapter implements VectorStore {
       ? [sanitizeName(filters.namespace)]
       : this.listNamespaces();
 
-    let all: MemoryEntry[] = [];
+    const all: MemoryEntry[] = [];
     for (const ns of namespaces) {
       const entries = this.readAllEntries(ns);
       for (const entry of entries) {
@@ -124,22 +129,20 @@ export class LocalFileAdapter implements VectorStore {
       }
     }
 
-    all.sort((a, b) =>
-      new Date(b.metadata.timestamp).getTime() - new Date(a.metadata.timestamp).getTime()
+    all.sort(
+      (a, b) => new Date(b.metadata.timestamp).getTime() - new Date(a.metadata.timestamp).getTime(),
     );
     return all.slice(filters.offset, filters.offset + filters.limit);
   }
 
   async count(namespace?: string): Promise<number> {
-    const namespaces = namespace
-      ? [sanitizeName(namespace)]
-      : this.listNamespaces();
+    const namespaces = namespace ? [sanitizeName(namespace)] : this.listNamespaces();
 
     let total = 0;
     for (const ns of namespaces) {
       const dir = this.namespacePath(ns);
       if (existsSync(dir)) {
-        total += readdirSync(dir).filter(f => f.endsWith(".json")).length;
+        total += readdirSync(dir).filter((f) => f.endsWith(".json")).length;
       }
     }
     return total;
@@ -151,7 +154,7 @@ export class LocalFileAdapter implements VectorStore {
 
   private matchesFilters(entry: MemoryEntry, filters: SearchFilters): boolean {
     if (filters.tags && filters.tags.length > 0) {
-      const hasTag = filters.tags.some(t => entry.metadata.tags.includes(t as MemoryTag));
+      const hasTag = filters.tags.some((t) => entry.metadata.tags.includes(t as MemoryTag));
       if (!hasTag) return false;
     }
     if (filters.after && entry.metadata.timestamp < filters.after) return false;
@@ -161,7 +164,7 @@ export class LocalFileAdapter implements VectorStore {
 
   private matchesListFilters(entry: MemoryEntry, filters: ListFilters): boolean {
     if (filters.tags && filters.tags.length > 0) {
-      const hasTag = filters.tags.some(t => entry.metadata.tags.includes(t as MemoryTag));
+      const hasTag = filters.tags.some((t) => entry.metadata.tags.includes(t as MemoryTag));
       if (!hasTag) return false;
     }
     return true;

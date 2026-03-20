@@ -23,10 +23,7 @@ export function registerSaveTool(server: McpServer, manager: MemoryManager) {
         )
         .optional()
         .describe("Semantic tags"),
-      namespace: z
-        .string()
-        .optional()
-        .describe("Project namespace (auto-detected if omitted)"),
+      namespace: z.string().optional().describe("Project namespace (auto-detected if omitted)"),
       global: z
         .boolean()
         .optional()

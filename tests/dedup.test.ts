@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  contentHash,
-  cosineSimilarity,
-  isDuplicate,
-} from "../src/memory/dedup.js";
+import { contentHash, cosineSimilarity, isDuplicate } from "../src/memory/dedup.js";
 
 describe("contentHash", () => {
   it("produces consistent hashes for the same content", async () => {
@@ -56,9 +52,7 @@ describe("cosineSimilarity", () => {
 describe("isDuplicate", () => {
   it("detects exact hash matches", async () => {
     const hash = await contentHash("test content");
-    const result = isDuplicate(hash, [], [
-      { contentHash: hash, id: "entry-1" },
-    ]);
+    const result = isDuplicate(hash, [], [{ contentHash: hash, id: "entry-1" }]);
     expect(result.exact).toBe(true);
     expect(result.similar).toBe(false);
   });

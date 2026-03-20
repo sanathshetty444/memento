@@ -7,13 +7,7 @@
  * Or imported and called: import { processQueue } from "./hooks/queue-worker.js"
  */
 
-import {
-  existsSync,
-  readFileSync,
-  writeFileSync,
-  unlinkSync,
-  mkdirSync,
-} from "node:fs";
+import { existsSync, readFileSync, writeFileSync, unlinkSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -23,7 +17,7 @@ import { autoTag } from "../memory/tagger.js";
 import { chunkContent } from "../memory/chunker.js";
 import { resolveNamespace } from "../memory/namespace.js";
 import { contentHash, isDuplicate } from "../memory/dedup.js";
-import { loadConfig } from "../config.js";
+import { loadConfig, type MementoConfig } from "../config.js";
 import { createStore } from "../storage/index.js";
 import { createEmbeddingProvider } from "../embeddings/index.js";
 import type { VectorStore } from "../storage/interface.js";
@@ -158,15 +152,10 @@ async function processEntry(
   store: VectorStore,
   embedder: EmbeddingProvider,
   namespace: string,
+  config: MementoConfig,
 ): Promise<number> {
-  // Step 1: Redact sensitive data
   const redacted = redact(entry.content);
-
-  // Step 2: Auto-tag based on content
   const tags = autoTag(redacted);
-
-  // Step 3: Chunk if content is long
-  const config = loadConfig();
   const chunks = chunkContent(redacted, {
     maxWords: config.memory.chunkSize,
     overlapWords: config.memory.chunkOverlap,
@@ -192,7 +181,12 @@ async function processEntry(
       embedding: r.entry.embedding,
     }));
 
-    const dupResult = isDuplicate(hash, embedding, existingEntries, config.memory.deduplicationThreshold);
+    const dupResult = isDuplicate(
+      hash,
+      embedding,
+      existingEntries,
+      config.memory.deduplicationThreshold,
+    );
 
     if (dupResult.exact || dupResult.similar) {
       continue; // Skip duplicates
@@ -211,10 +205,7 @@ async function processEntry(
         timestamp: entry.timestamp,
         source: sourceFromToolName(entry.toolName),
         sessionId: entry.sessionId,
-        summary:
-          chunks.length > 1
-            ? `Chunk ${chunk.index + 1}/${chunk.total}`
-            : undefined,
+        summary: chunks.length > 1 ? `Chunk ${chunk.index + 1}/${chunk.total}` : undefined,
       },
     };
 
@@ -263,14 +254,11 @@ export async function processQueue(): Promise<number> {
 
     for (const entry of batch) {
       try {
-        const stored = await processEntry(entry, store, embedder, namespace);
+        const stored = await processEntry(entry, store, embedder, namespace, config);
         totalStored += stored;
       } catch (err) {
         // Log but continue processing remaining entries
-        console.error(
-          `[queue-worker] Failed to process entry (${entry.toolName}):`,
-          err,
-        );
+        console.error(`[queue-worker] Failed to process entry (${entry.toolName}):`, err);
       }
     }
 
@@ -290,8 +278,7 @@ export async function processQueue(): Promise<number> {
 const isMain =
   typeof process !== "undefined" &&
   process.argv[1] &&
-  (process.argv[1].endsWith("queue-worker.js") ||
-    process.argv[1].endsWith("queue-worker.ts"));
+  (process.argv[1].endsWith("queue-worker.js") || process.argv[1].endsWith("queue-worker.ts"));
 
 if (isMain) {
   processQueue()

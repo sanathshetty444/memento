@@ -15,10 +15,7 @@ export class Neo4jAdapter implements VectorStore {
 
   async initialize(): Promise<void> {
     const neo4j = await this.loadDriver();
-    this.driver = neo4j.driver(
-      this.url,
-      neo4j.auth.basic(this.username, this.password),
-    );
+    this.driver = neo4j.driver(this.url, neo4j.auth.basic(this.username, this.password));
     await this.driver.verifyConnectivity();
 
     const session = this.driver.session();
@@ -112,10 +109,7 @@ export class Neo4jAdapter implements VectorStore {
     }
   }
 
-  async search(
-    queryEmbedding: number[],
-    filters: SearchFilters,
-  ): Promise<MemoryResult[]> {
+  async search(queryEmbedding: number[], filters: SearchFilters): Promise<MemoryResult[]> {
     const session = this.driver.session();
     try {
       const whereClauses: string[] = [];
@@ -129,9 +123,7 @@ export class Neo4jAdapter implements VectorStore {
         params.namespace = filters.namespace;
       }
       if (filters.tags?.length) {
-        whereClauses.push(
-          "any(tag IN $tags WHERE tag IN m.tags)",
-        );
+        whereClauses.push("any(tag IN $tags WHERE tag IN m.tags)");
         params.tags = filters.tags;
       }
       if (filters.after) {
@@ -143,10 +135,7 @@ export class Neo4jAdapter implements VectorStore {
         params.before = filters.before;
       }
 
-      const whereStr =
-        whereClauses.length > 0
-          ? "WHERE " + whereClauses.join(" AND ")
-          : "";
+      const whereStr = whereClauses.length > 0 ? "WHERE " + whereClauses.join(" AND ") : "";
 
       const result = await session.run(
         `
@@ -205,16 +194,11 @@ export class Neo4jAdapter implements VectorStore {
         params.namespace = filters.namespace;
       }
       if (filters.tags?.length) {
-        whereClauses.push(
-          "any(tag IN $tags WHERE tag IN m.tags)",
-        );
+        whereClauses.push("any(tag IN $tags WHERE tag IN m.tags)");
         params.tags = filters.tags;
       }
 
-      const whereStr =
-        whereClauses.length > 0
-          ? "WHERE " + whereClauses.join(" AND ")
-          : "";
+      const whereStr = whereClauses.length > 0 ? "WHERE " + whereClauses.join(" AND ") : "";
 
       const result = await session.run(
         `
@@ -228,9 +212,7 @@ export class Neo4jAdapter implements VectorStore {
         params,
       );
 
-      return result.records.map((record: any) =>
-        this.nodeToEntry(record.get("m")),
-      );
+      return result.records.map((record: any) => this.nodeToEntry(record.get("m")));
     } finally {
       await session.close();
     }
@@ -245,9 +227,7 @@ export class Neo4jAdapter implements VectorStore {
 
       const result = await session.run(query, namespace ? { namespace } : {});
       const total = result.records[0]?.get("total");
-      return typeof total === "object" && total.toNumber
-        ? total.toNumber()
-        : Number(total);
+      return typeof total === "object" && total.toNumber ? total.toNumber() : Number(total);
     } finally {
       await session.close();
     }
@@ -283,9 +263,7 @@ export class Neo4jAdapter implements VectorStore {
       const neo4j = await import("neo4j-driver");
       return neo4j.default ?? neo4j;
     } catch {
-      throw new Error(
-        "neo4j-driver is not installed. Install it with: npm install neo4j-driver",
-      );
+      throw new Error("neo4j-driver is not installed. Install it with: npm install neo4j-driver");
     }
   }
 }

@@ -19,7 +19,15 @@ export interface MemoryMetadata {
   relatedMemoryIds?: string[];
 }
 
-export type MemoryTag = "conversation" | "decision" | "code" | "error" | "architecture" | "config" | "dependency" | "todo";
+export type MemoryTag =
+  | "conversation"
+  | "decision"
+  | "code"
+  | "error"
+  | "architecture"
+  | "config"
+  | "dependency"
+  | "todo";
 
 export type MemorySource = "explicit" | "hook:post_tool_use" | "hook:stop";
 

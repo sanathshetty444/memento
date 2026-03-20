@@ -5,7 +5,6 @@
  */
 
 import type { VectorStore } from "../storage/interface.js";
-import type { EmbeddingProvider } from "../embeddings/interface.js";
 import type { MemoryEntry } from "./types.js";
 import { cosineSimilarity } from "./dedup.js";
 
@@ -35,10 +34,7 @@ export interface CompactionResult {
  * Paginate through all entries in a namespace.
  * Fetches PAGE_SIZE entries at a time to avoid loading everything at once.
  */
-async function listAll(
-  store: VectorStore,
-  namespace: string,
-): Promise<MemoryEntry[]> {
+async function listAll(store: VectorStore, namespace: string): Promise<MemoryEntry[]> {
   const entries: MemoryEntry[] = [];
   let offset = 0;
 
@@ -71,7 +67,6 @@ function toEpoch(timestamp: string): number {
  */
 export async function compactMemories(
   store: VectorStore,
-  _embeddings: EmbeddingProvider,
   options: CompactionOptions,
 ): Promise<CompactionResult> {
   const {
@@ -129,9 +124,7 @@ export async function compactMemories(
   // ------------------------------------------------------------------
 
   // Sort newest first
-  surviving.sort(
-    (a, b) => toEpoch(b.metadata.timestamp) - toEpoch(a.metadata.timestamp),
-  );
+  surviving.sort((a, b) => toEpoch(b.metadata.timestamp) - toEpoch(a.metadata.timestamp));
 
   const candidates = surviving.slice(0, MERGE_BATCH_LIMIT);
   const mergedIds = new Set<string>();
@@ -180,9 +173,7 @@ export async function compactMemories(
   // ------------------------------------------------------------------
   if (surviving.length > maxEntries) {
     // Sort oldest first so we can pop from the front
-    surviving.sort(
-      (a, b) => toEpoch(a.metadata.timestamp) - toEpoch(b.metadata.timestamp),
-    );
+    surviving.sort((a, b) => toEpoch(a.metadata.timestamp) - toEpoch(b.metadata.timestamp));
 
     const excess = surviving.length - maxEntries;
     const toEvict = surviving.slice(0, excess);

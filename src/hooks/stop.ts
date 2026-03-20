@@ -38,9 +38,7 @@ function main(): void {
 
     // Capture the last assistant message as session context
     const lastMsg = input.last_assistant_message ?? "";
-    const summary = lastMsg.length > 2000
-      ? lastMsg.slice(0, 2000) + "\n...[truncated]"
-      : lastMsg;
+    const summary = lastMsg.length > 2000 ? lastMsg.slice(0, 2000) + "\n...[truncated]" : lastMsg;
 
     const entry: QueueEntry = {
       timestamp: new Date().toISOString(),

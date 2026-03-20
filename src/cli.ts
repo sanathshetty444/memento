@@ -12,6 +12,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { generatePluginSource } from "./hooks/opencode-plugin.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -31,6 +32,12 @@ const MCP_SERVER_PATH = join(DIST_DIR, "index.js");
 const POST_TOOL_HOOK_PATH = join(DIST_DIR, "hooks", "post-tool-use.js");
 const STOP_HOOK_PATH = join(DIST_DIR, "hooks", "stop.js");
 const PACKAGE_DIR = join(DIST_DIR, "..");
+
+// ── OpenCode paths ────────────────────────────────────────────────
+const OPENCODE_CONFIG_DIR = join(homedir(), ".config", "opencode");
+const OPENCODE_CONFIG_PATH = join(OPENCODE_CONFIG_DIR, "opencode.json");
+const OPENCODE_PLUGINS_DIR = join(OPENCODE_CONFIG_DIR, "plugins");
+const OPENCODE_PLUGIN_PATH = join(OPENCODE_PLUGINS_DIR, "memento-capture.js");
 
 // ── CLAUDE.md block ────────────────────────────────────────────────
 const MEMENTO_MD_START = "<!-- memento:start -->";
@@ -86,7 +93,7 @@ function warn(msg: string): void {
 
 // ── Setup ──────────────────────────────────────────────────────────
 function setup(): void {
-  console.log("\n  Memento — Setting up persistent memory for Claude Code\n");
+  console.log("\n  Memento — Setting up persistent memory\n");
 
   // Validate dist exists
   if (!existsSync(MCP_SERVER_PATH)) {
@@ -185,11 +192,14 @@ function setup(): void {
   writeText(CLAUDE_MD_PATH, md);
   success("Instructions: ~/.claude/CLAUDE.md");
 
+  // 5. Configure OpenCode (if detected)
+  setupOpenCode();
+
   console.log(`
   ──────────────────────────────────────────
   Done! Memento is ready.
 
-  Start a new Claude Code session and it will:
+  Start a new session and it will:
     • Auto-capture context from tool calls
     • Process and store memories when sessions end
     • Recall relevant context in future sessions
@@ -199,6 +209,33 @@ function setup(): void {
     memento teardown   — Remove (keeps memories)
   ──────────────────────────────────────────
 `);
+}
+
+function setupOpenCode(): void {
+  // Auto-detect: only configure if OpenCode config dir exists
+  if (!existsSync(OPENCODE_CONFIG_DIR)) {
+    info("OpenCode not detected (skipped)");
+    return;
+  }
+
+  // 1. Configure MCP server in ~/.config/opencode/opencode.json
+  const config = readJSON(OPENCODE_CONFIG_PATH) as { mcp?: Record<string, unknown> };
+  if (!config.mcp) config.mcp = {};
+
+  (config.mcp as Record<string, unknown>)["memory"] = {
+    type: "local",
+    command: ["node", MCP_SERVER_PATH],
+  };
+
+  writeJSON(OPENCODE_CONFIG_PATH, config);
+  success("OpenCode MCP: ~/.config/opencode/opencode.json");
+
+  // 2. Install capture plugin
+  const workerPath = join(DIST_DIR, "hooks", "queue-worker.js");
+  const pluginSource = generatePluginSource(workerPath);
+  mkdirSync(OPENCODE_PLUGINS_DIR, { recursive: true });
+  writeFileSync(OPENCODE_PLUGIN_PATH, pluginSource);
+  success("OpenCode plugin: ~/.config/opencode/plugins/memento-capture.js");
 }
 
 // ── Teardown ───────────────────────────────────────────────────────

@@ -75,10 +75,7 @@ export class CircuitBreaker {
 
     if (this._state === "HALF_OPEN") {
       this._state = "OPEN";
-      this.currentCooldownMs = Math.min(
-        this.currentCooldownMs * 2,
-        this.maxCooldownMs,
-      );
+      this.currentCooldownMs = Math.min(this.currentCooldownMs * 2, this.maxCooldownMs);
       return;
     }
 

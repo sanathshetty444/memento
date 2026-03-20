@@ -60,7 +60,11 @@
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "lint": "eslint src/ tests/",
+    "lint:fix": "eslint src/ tests/ --fix",
+    "format": "prettier --write --no-error-on-unmatched-pattern 'src/**/*.ts' 'tests/**/*.ts' '*.json' '*.yml'",
+    "format:check": "prettier --check --no-error-on-unmatched-pattern 'src/**/*.ts' 'tests/**/*.ts' '*.json' '*.yml'"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
@@ -76,9 +80,13 @@
   "devDependencies": {
     "@types/node": "^22.15.0",
     "@types/uuid": "^10.0.0",
+    "eslint": "^10.0.3",
+    "eslint-config-prettier": "^10.1.8",
     "fake-indexeddb": "^6.2.5",
+    "prettier": "^3.8.1",
     "tsup": "^8.5.1",
     "typescript": "^5.8.0",
+    "typescript-eslint": "^8.57.1",
     "vitest": "^3.1.0"
   }
 }

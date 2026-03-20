@@ -70,9 +70,7 @@ export class MemoryManager {
       ...config,
     };
     this.resilienceEnabled = enableResilience ?? true;
-    this.cache = this.resilienceEnabled
-      ? new LRUCache<string, MemoryEntry>(100)
-      : null;
+    this.cache = this.resilienceEnabled ? new LRUCache<string, MemoryEntry>(100) : null;
     this.circuitBreaker = null;
     this.wal = null;
     this.initPromise = this.resilienceEnabled ? this.initResilience() : null;
@@ -123,20 +121,15 @@ export class MemoryManager {
     await this.ensureReady();
     const namespace = options.global
       ? GLOBAL_NAMESPACE
-      : (options.namespace ?? await this.getNamespace());
+      : (options.namespace ?? (await this.getNamespace()));
 
     // Pipeline: redact → tag → chunk → dedup → embed → store
-    const redactedContent = this.config.redactSecrets
-      ? redact(options.content)
-      : options.content;
+    const redactedContent = this.config.redactSecrets ? redact(options.content) : options.content;
 
     const detectedTags = this.config.autoTag ? autoTag(redactedContent) : [];
-    const mergedTags = [
-      ...new Set([...detectedTags, ...(options.tags ?? [])]),
-    ];
+    const mergedTags = [...new Set([...detectedTags, ...(options.tags ?? [])])];
 
-    const summary =
-      options.summary ?? generateSummary(redactedContent);
+    const summary = options.summary ?? generateSummary(redactedContent);
 
     const chunks = chunkContent(redactedContent, {
       maxWords: this.config.chunkSize,
@@ -192,9 +185,7 @@ export class MemoryManager {
         content: chunk.content,
         embedding,
         contentHash: hash,
-        ...(chunks.length > 1 && parentId && entryId !== parentId
-          ? { parentId }
-          : {}),
+        ...(chunks.length > 1 && parentId && entryId !== parentId ? { parentId } : {}),
         metadata: {
           namespace,
           tags: mergedTags,
@@ -204,9 +195,7 @@ export class MemoryManager {
           ...(options.functions ? { functions: options.functions } : {}),
           ...(options.sessionId ? { sessionId: options.sessionId } : {}),
           summary:
-            chunks.length > 1
-              ? `${summary} [chunk ${chunk.index + 1}/${chunk.total}]`
-              : summary,
+            chunks.length > 1 ? `${summary} [chunk ${chunk.index + 1}/${chunk.total}]` : summary,
           ...(relatedMemoryIds.length > 0 ? { relatedMemoryIds } : {}),
         },
       };
@@ -245,7 +234,7 @@ export class MemoryManager {
    */
   async recall(options: RecallOptions): Promise<MemoryResult[]> {
     await this.ensureReady();
-    const namespace = options.namespace ?? await this.getNamespace();
+    const namespace = options.namespace ?? (await this.getNamespace());
     const limit = Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
 
     const queryEmbedding = await this.embeddings.embed(options.query);
@@ -291,9 +280,7 @@ export class MemoryManager {
   /**
    * Search memories across all namespaces (cross-project).
    */
-  async search(
-    options: Omit<RecallOptions, "namespace">
-  ): Promise<MemoryResult[]> {
+  async search(options: Omit<RecallOptions, "namespace">): Promise<MemoryResult[]> {
     await this.ensureReady();
     const limit = Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
 
@@ -356,7 +343,7 @@ export class MemoryManager {
    */
   async list(options: ListOptions): Promise<MemoryEntry[]> {
     await this.ensureReady();
-    const namespace = options.namespace ?? await this.getNamespace();
+    const namespace = options.namespace ?? (await this.getNamespace());
 
     const listFn = () =>
       this.store.list({
@@ -366,9 +353,7 @@ export class MemoryManager {
         offset: options.offset ?? 0,
       });
 
-    return this.circuitBreaker
-      ? this.circuitBreaker.execute(listFn)
-      : listFn();
+    return this.circuitBreaker ? this.circuitBreaker.execute(listFn) : listFn();
   }
 
   /**
@@ -378,9 +363,7 @@ export class MemoryManager {
     await this.ensureReady();
     const countFn = () => this.store.count(namespace);
 
-    return this.circuitBreaker
-      ? this.circuitBreaker.execute(countFn)
-      : countFn();
+    return this.circuitBreaker ? this.circuitBreaker.execute(countFn) : countFn();
   }
 
   /**

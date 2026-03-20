@@ -34,7 +34,7 @@ export class GeminiFetchEmbeddingProvider implements EmbeddingProvider {
     if (!response.ok) {
       const body = await response.text();
       throw new Error(
-        `Gemini embedding failed (${response.status} ${response.statusText}): ${body}`
+        `Gemini embedding failed (${response.status} ${response.statusText}): ${body}`,
       );
     }
 
@@ -64,7 +64,7 @@ export class GeminiFetchEmbeddingProvider implements EmbeddingProvider {
     if (!response.ok) {
       const body = await response.text();
       throw new Error(
-        `Gemini batch embedding failed (${response.status} ${response.statusText}): ${body}`
+        `Gemini batch embedding failed (${response.status} ${response.statusText}): ${body}`,
       );
     }
 

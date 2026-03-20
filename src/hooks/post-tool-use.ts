@@ -27,15 +27,7 @@ interface QueueEntry {
 }
 
 // Read-only / low-signal tools that should not be captured
-const DENYLIST = new Set([
-  "Read",
-  "Glob",
-  "Grep",
-  "ls",
-  "cat",
-  "head",
-  "tail",
-]);
+const DENYLIST = new Set(["Read", "Glob", "Grep", "ls", "cat", "head", "tail"]);
 
 const MIN_OUTPUT_LENGTH = 50;
 const MAX_OUTPUT_LENGTH = 10_000;

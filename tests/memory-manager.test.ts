@@ -18,20 +18,15 @@ class MockVectorStore implements VectorStore {
     }
   }
 
-  async search(
-    queryEmbedding: number[],
-    filters: SearchFilters
-  ): Promise<MemoryResult[]> {
+  async search(queryEmbedding: number[], filters: SearchFilters): Promise<MemoryResult[]> {
     let results = this.entries;
 
     if (filters.namespace) {
-      results = results.filter(
-        (e) => e.metadata.namespace === filters.namespace
-      );
+      results = results.filter((e) => e.metadata.namespace === filters.namespace);
     }
     if (filters.tags) {
       results = results.filter((e) =>
-        filters.tags!.some((t) => e.metadata.tags.includes(t as any))
+        filters.tags!.some((t) => e.metadata.tags.includes(t as any)),
       );
     }
 
@@ -54,13 +49,11 @@ class MockVectorStore implements VectorStore {
     let results = this.entries;
 
     if (filters.namespace) {
-      results = results.filter(
-        (e) => e.metadata.namespace === filters.namespace
-      );
+      results = results.filter((e) => e.metadata.namespace === filters.namespace);
     }
     if (filters.tags) {
       results = results.filter((e) =>
-        filters.tags!.some((t) => e.metadata.tags.includes(t as any))
+        filters.tags!.some((t) => e.metadata.tags.includes(t as any)),
       );
     }
 
@@ -69,8 +62,7 @@ class MockVectorStore implements VectorStore {
 
   async count(namespace?: string): Promise<number> {
     if (namespace) {
-      return this.entries.filter((e) => e.metadata.namespace === namespace)
-        .length;
+      return this.entries.filter((e) => e.metadata.namespace === namespace).length;
     }
     return this.entries.length;
   }
@@ -130,9 +122,7 @@ describe("MemoryManager", () => {
   });
 
   it("save() chunks long content", async () => {
-    const longContent = Array.from({ length: 1500 }, (_, i) => `word${i}`).join(
-      " "
-    );
+    const longContent = Array.from({ length: 1500 }, (_, i) => `word${i}`).join(" ");
     const entries = await manager.save({
       content: longContent,
       namespace: "test-project",

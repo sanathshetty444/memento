@@ -83,9 +83,7 @@ describe("autoTag", () => {
   });
 
   it("returns multiple tags when content matches multiple categories", () => {
-    const tags = autoTag(
-      "Error: the auth service component failed because of a bug in index.ts"
-    );
+    const tags = autoTag("Error: the auth service component failed because of a bug in index.ts");
     expect(tags.length).toBeGreaterThan(1);
     expect(tags).toContain("error");
     expect(tags).toContain("architecture");

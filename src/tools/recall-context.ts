@@ -8,10 +8,7 @@ export function registerRecallTool(server: McpServer, manager: MemoryManager) {
     "Recall relevant memories from a specific project namespace using semantic search",
     {
       query: z.string().describe("The search query to find relevant memories"),
-      namespace: z
-        .string()
-        .optional()
-        .describe("Project namespace (auto-detected if omitted)"),
+      namespace: z.string().optional().describe("Project namespace (auto-detected if omitted)"),
       tags: z
         .array(
           z.enum([
@@ -27,10 +24,7 @@ export function registerRecallTool(server: McpServer, manager: MemoryManager) {
         )
         .optional()
         .describe("Filter by semantic tags"),
-      limit: z
-        .number()
-        .optional()
-        .describe("Maximum number of results (default 10, max 100)"),
+      limit: z.number().optional().describe("Maximum number of results (default 10, max 100)"),
     },
     async (args) => {
       const results = await manager.recall({
@@ -54,13 +48,8 @@ export function registerRecallTool(server: McpServer, manager: MemoryManager) {
       const formatted = results.map((r, i) => {
         const entry = r.entry;
         const preview =
-          entry.content.length > 200
-            ? entry.content.slice(0, 200) + "..."
-            : entry.content;
-        const tags =
-          entry.metadata.tags.length > 0
-            ? entry.metadata.tags.join(", ")
-            : "none";
+          entry.content.length > 200 ? entry.content.slice(0, 200) + "..." : entry.content;
+        const tags = entry.metadata.tags.length > 0 ? entry.metadata.tags.join(", ") : "none";
         return [
           `--- Result ${i + 1} ---`,
           `ID: ${entry.id}`,

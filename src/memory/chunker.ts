@@ -48,11 +48,7 @@ function splitSentences(text: string): string[] {
  * Build chunks from an array of segments, respecting maxWords and overlapWords.
  * Returns the chunk strings (overlap is prepended from the previous chunk).
  */
-function buildChunks(
-  segments: string[],
-  maxWords: number,
-  overlapWords: number
-): string[] {
+function buildChunks(segments: string[], maxWords: number, overlapWords: number): string[] {
   const chunks: string[] = [];
   let currentSegments: string[] = [];
   let currentWordCount = 0;
@@ -66,10 +62,7 @@ function buildChunks(
 
       // Compute overlap from the tail of the current chunk
       const allWords = getWords(currentSegments.join(" "));
-      const overlapText =
-        overlapWords > 0
-          ? allWords.slice(-overlapWords).join(" ")
-          : "";
+      const overlapText = overlapWords > 0 ? allWords.slice(-overlapWords).join(" ") : "";
 
       currentSegments = overlapText ? [overlapText] : [];
       currentWordCount = overlapText ? countWords(overlapText) : 0;
@@ -97,10 +90,7 @@ function buildChunks(
  * 4. If any sentence still exceeds maxWords, split on word boundaries.
  * 5. Assemble chunks with overlap from the previous chunk's tail.
  */
-export function chunkContent(
-  content: string,
-  options?: ChunkOptions
-): ChunkResult[] {
+export function chunkContent(content: string, options?: ChunkOptions): ChunkResult[] {
   const maxWords = options?.maxWords ?? DEFAULT_MAX_WORDS;
   const overlapWords = options?.overlapWords ?? DEFAULT_OVERLAP_WORDS;
   const threshold = options?.threshold ?? DEFAULT_THRESHOLD;

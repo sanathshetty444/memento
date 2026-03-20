@@ -27,10 +27,7 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
         env.cacheDir = this.modelPath;
       }
 
-      const extractor = await pipeline(
-        "feature-extraction",
-        "Xenova/all-MiniLM-L6-v2",
-      );
+      const extractor = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
       this.pipeline = extractor;
       return extractor;
     })();

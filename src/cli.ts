@@ -25,9 +25,7 @@ const DATA_DIR = join(homedir(), ".claude-memory");
 // Resolve paths relative to this file.
 // In compiled form, cli.js lives in dist/ alongside index.js and hooks/.
 // In source form (ts-node/tsx), cli.ts lives in src/ and dist/ is a sibling.
-const DIST_DIR = __dirname.endsWith("src")
-  ? join(__dirname, "..", "dist")
-  : __dirname; // cli.js is already in dist/
+const DIST_DIR = __dirname.endsWith("src") ? join(__dirname, "..", "dist") : __dirname; // cli.js is already in dist/
 
 const MCP_SERVER_PATH = join(DIST_DIR, "index.js");
 const POST_TOOL_HOOK_PATH = join(DIST_DIR, "hooks", "post-tool-use.js");
@@ -72,10 +70,6 @@ function readText(path: string): string {
 function writeText(path: string, content: string): void {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, content);
-}
-
-function log(msg: string): void {
-  console.log(`  ${msg}`);
 }
 
 function success(msg: string): void {
@@ -153,14 +147,14 @@ function setup(): void {
   // Remove existing memento hooks, then add fresh ones
   hooks["PostToolUse"] = (hooks["PostToolUse"] ?? []).filter(
     (h: unknown) =>
-      !(h as { hooks?: Array<{ command?: string }> })?.hooks?.some(
-        (hh) => hh.command?.includes("memento"),
+      !(h as { hooks?: Array<{ command?: string }> })?.hooks?.some((hh) =>
+        hh.command?.includes("memento"),
       ),
   );
   hooks["Stop"] = (hooks["Stop"] ?? []).filter(
     (h: unknown) =>
-      !(h as { hooks?: Array<{ command?: string }> })?.hooks?.some(
-        (hh) => hh.command?.includes("memento"),
+      !(h as { hooks?: Array<{ command?: string }> })?.hooks?.some((hh) =>
+        hh.command?.includes("memento"),
       ),
   );
 
@@ -184,10 +178,7 @@ function setup(): void {
   }
 
   // Also remove any old-style memento section (without markers)
-  md = md.replace(
-    /## Memento \(Persistent Memory\)[\s\S]*?(?=\n## |\n$|$)/,
-    "",
-  );
+  md = md.replace(/## Memento \(Persistent Memory\)[\s\S]*?(?=\n## |\n$|$)/, "");
 
   // Append memento block
   md = md.trimEnd() + "\n\n" + MEMENTO_MD_BLOCK + "\n";
@@ -236,8 +227,8 @@ function teardown(): void {
       const before = (settings.hooks[event] ?? []).length;
       settings.hooks[event] = (settings.hooks[event] ?? []).filter(
         (h: unknown) =>
-          !(h as { hooks?: Array<{ command?: string }> })?.hooks?.some(
-            (hh) => hh.command?.includes("memento"),
+          !(h as { hooks?: Array<{ command?: string }> })?.hooks?.some((hh) =>
+            hh.command?.includes("memento"),
           ),
       );
       if ((settings.hooks[event]?.length ?? 0) !== before) changed = true;
@@ -260,9 +251,7 @@ function teardown(): void {
   const endIdx = md.indexOf(MEMENTO_MD_END);
   if (startIdx !== -1 && endIdx !== -1) {
     md =
-      md.slice(0, startIdx).trimEnd() +
-      "\n" +
-      md.slice(endIdx + MEMENTO_MD_END.length).trimStart();
+      md.slice(0, startIdx).trimEnd() + "\n" + md.slice(endIdx + MEMENTO_MD_END.length).trimStart();
     writeText(CLAUDE_MD_PATH, md);
     success("Removed instructions from ~/.claude/CLAUDE.md");
   } else {
@@ -295,17 +284,15 @@ function status(): void {
   const settings = readJSON(SETTINGS_PATH) as {
     hooks?: Record<string, unknown[]>;
   };
-  const hasPostTool = (settings.hooks?.PostToolUse ?? []).some(
-    (h: unknown) =>
-      (h as { hooks?: Array<{ command?: string }> })?.hooks?.some((hh) =>
-        hh.command?.includes("memento"),
-      ),
+  const hasPostTool = (settings.hooks?.PostToolUse ?? []).some((h: unknown) =>
+    (h as { hooks?: Array<{ command?: string }> })?.hooks?.some((hh) =>
+      hh.command?.includes("memento"),
+    ),
   );
-  const hasStop = (settings.hooks?.Stop ?? []).some(
-    (h: unknown) =>
-      (h as { hooks?: Array<{ command?: string }> })?.hooks?.some((hh) =>
-        hh.command?.includes("memento"),
-      ),
+  const hasStop = (settings.hooks?.Stop ?? []).some((h: unknown) =>
+    (h as { hooks?: Array<{ command?: string }> })?.hooks?.some((hh) =>
+      hh.command?.includes("memento"),
+    ),
   );
 
   if (hasPostTool && hasStop) {
@@ -350,6 +337,8 @@ const command = process.argv[2];
 
 switch (command) {
   case "setup":
+  case undefined:
+    // Default: running `npx memento-memory` with no args triggers setup
     setup();
     break;
   case "teardown":
@@ -359,14 +348,20 @@ switch (command) {
   case "status":
     status();
     break;
-  default:
+  case "help":
+  case "--help":
+  case "-h":
     console.log(`
   Memento — Persistent memory for Claude Code
 
   Usage:
-    memento setup       Set up hooks, MCP server, and CLAUDE.md
-    memento teardown    Remove all config (keeps stored memories)
-    memento status      Show installation status
+    npx memento-memory              Set up (default)
+    npx memento-memory setup        Set up hooks, MCP server, and CLAUDE.md
+    npx memento-memory status       Check installation status
+    npx memento-memory teardown     Remove all config (keeps stored memories)
 `);
     break;
+  default:
+    console.log(`  Unknown command: ${command}\n  Run 'npx memento-memory --help' for usage.`);
+    process.exit(1);
 }

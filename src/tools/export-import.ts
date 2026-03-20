@@ -9,10 +9,7 @@ export function registerExportTool(server: McpServer, manager: MemoryManager) {
     "memory_export",
     "Export all memories from a namespace as JSONL or JSON (without embeddings to keep size down)",
     {
-      namespace: z
-        .string()
-        .optional()
-        .describe("Project namespace (auto-detected if omitted)"),
+      namespace: z.string().optional().describe("Project namespace (auto-detected if omitted)"),
       format: z
         .enum(["jsonl", "json"])
         .default("jsonl")
@@ -44,7 +41,7 @@ export function registerExportTool(server: McpServer, manager: MemoryManager) {
       }
 
       // Strip embeddings to keep export size down
-      const stripped = allEntries.map(({ embedding, ...rest }) => rest);
+      const stripped = allEntries.map(({ embedding: _embedding, ...rest }) => rest);
 
       let exportData: string;
       if (args.format === "jsonl") {

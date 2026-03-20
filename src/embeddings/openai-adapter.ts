@@ -38,9 +38,7 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
       this.client = new OpenAI({ apiKey: this.apiKey });
       return this.client;
     } catch {
-      throw new Error(
-        "openai is not installed. Install it with: npm install openai",
-      );
+      throw new Error("openai is not installed. Install it with: npm install openai");
     }
   }
 }

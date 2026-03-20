@@ -19,9 +19,10 @@ describe("GeminiFetchEmbeddingProvider", () => {
   it("embed() returns 768-dimensional vector", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({
-        embedding: { values: MOCK_EMBEDDING },
-      }),
+      json: () =>
+        Promise.resolve({
+          embedding: { values: MOCK_EMBEDDING },
+        }),
     });
 
     const result = await provider.embed("test text");
@@ -32,9 +33,10 @@ describe("GeminiFetchEmbeddingProvider", () => {
   it("embed() sends correct request", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({
-        embedding: { values: MOCK_EMBEDDING },
-      }),
+      json: () =>
+        Promise.resolve({
+          embedding: { values: MOCK_EMBEDDING },
+        }),
     });
 
     await provider.embed("hello world");
@@ -69,12 +71,10 @@ describe("GeminiFetchEmbeddingProvider", () => {
   it("embedBatch() returns array of vectors", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({
-        embeddings: [
-          { values: MOCK_EMBEDDING },
-          { values: MOCK_EMBEDDING },
-        ],
-      }),
+      json: () =>
+        Promise.resolve({
+          embeddings: [{ values: MOCK_EMBEDDING }, { values: MOCK_EMBEDDING }],
+        }),
     });
 
     const results = await provider.embedBatch(["text1", "text2"]);

@@ -7,9 +7,7 @@ export interface EmbeddingConfig {
   openai?: { apiKey: string };
 }
 
-export async function createEmbeddingProvider(
-  config: EmbeddingConfig,
-): Promise<EmbeddingProvider> {
+export async function createEmbeddingProvider(config: EmbeddingConfig): Promise<EmbeddingProvider> {
   if (config.type === "local") {
     const { LocalEmbeddingProvider } = await import("./local-adapter.js");
     return new LocalEmbeddingProvider(config.local);

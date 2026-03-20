@@ -37,9 +37,9 @@ describe("CircuitBreaker", () => {
       await breaker.execute(fail).catch(() => {});
     }
 
-    await expect(
-      breaker.execute(() => Promise.resolve("ok"))
-    ).rejects.toThrow("Circuit breaker is OPEN");
+    await expect(breaker.execute(() => Promise.resolve("ok"))).rejects.toThrow(
+      "Circuit breaker is OPEN",
+    );
   });
 
   it("transitions to HALF_OPEN after cooldown", async () => {

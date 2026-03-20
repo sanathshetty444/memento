@@ -192,7 +192,7 @@ async function processEntry(
       embedding: r.entry.embedding,
     }));
 
-    const dupResult = isDuplicate(hash, embedding, existingEntries);
+    const dupResult = isDuplicate(hash, embedding, existingEntries, config.memory.deduplicationThreshold);
 
     if (dupResult.exact || dupResult.similar) {
       continue; // Skip duplicates
@@ -249,6 +249,7 @@ export async function processQueue(): Promise<number> {
     const config = loadConfig();
     const store = await createStore({
       type: config.store.type,
+      local: { path: config.store.localPath },
       chromadb: { path: config.store.chromaPath },
     });
     const embedder = await createEmbeddingProvider({

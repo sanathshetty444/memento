@@ -95,7 +95,7 @@ memento teardown
 |----------|-------------|
 | `Edit`, `Bash`, `Write` tool calls | `Read`, `Glob`, `Grep` (read-only, low signal) |
 | Outputs ≥ 50 chars | Short outputs (< 50 chars) |
-| Unique content | Duplicates (hash + 95% cosine similarity) |
+| Unique content | Duplicates (hash + 92% cosine similarity) |
 | Redacted content | Raw secrets (API keys, tokens, passwords) |
 | — | `memory_*` tool calls (prevents circular capture) |
 
@@ -179,7 +179,7 @@ Memento
 
 ```bash
 npm run build        # Compile TypeScript
-npm test             # Run tests (75 tests)
+npm test             # Run tests (99 tests)
 npm run test:watch   # Watch mode
 npx tsc --noEmit     # Type-check only
 ```

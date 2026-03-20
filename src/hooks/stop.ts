@@ -8,7 +8,7 @@
 import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { execFile } from "node:child_process";
+import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 
@@ -57,12 +57,15 @@ function main(): void {
     const queuePath = join(dataDir, "capture-queue.jsonl");
     appendFileSync(queuePath, JSON.stringify(entry) + "\n");
 
-    // Fire-and-forget: trigger queue worker to process captured entries
+    // Fire-and-forget: trigger queue worker to process captured entries.
+    // Must detach so process.exit(0) below does not kill the worker.
     const __dirname = dirname(fileURLToPath(import.meta.url));
     const workerPath = join(__dirname, "queue-worker.js");
-    execFile("node", [workerPath], { timeout: 30_000 }, () => {
-      // Intentionally ignore result — best-effort processing
+    const child = spawn("node", [workerPath], {
+      detached: true,
+      stdio: "ignore",
     });
+    child.unref();
   } catch {
     // Never block Claude — swallow all errors
   }

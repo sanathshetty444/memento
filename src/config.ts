@@ -66,9 +66,9 @@ const DEFAULTS: MementoConfig = {
     defaultNamespace: "project",
     defaultLimit: 10,
     maxLimit: 100,
-    deduplicationThreshold: 0.95,
-    chunkSize: 512,
-    chunkOverlap: 64,
+    deduplicationThreshold: 0.92,
+    chunkSize: 500,
+    chunkOverlap: 100,
   },
   dataDir: getDataDir(),
 };

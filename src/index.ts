@@ -20,11 +20,19 @@ async function main() {
     local: { modelPath: config.dataDir ? `${config.dataDir}/models` : undefined },
   });
 
-  const manager = new MemoryManager({ store, embeddings });
+  const manager = new MemoryManager({
+    store,
+    embeddings,
+    config: {
+      deduplicationThreshold: config.memory.deduplicationThreshold,
+      chunkSize: config.memory.chunkSize,
+      chunkOverlap: config.memory.chunkOverlap,
+    },
+  });
 
   const server = new McpServer({
     name: "memory",
-    version: "0.1.0",
+    version: "0.3.0",
   });
 
   registerAllTools(server, manager, embeddings);

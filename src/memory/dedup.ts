@@ -74,7 +74,8 @@ interface DuplicateResult {
 export function isDuplicate(
   hash: string,
   embedding: number[],
-  existingEntries: Array<ExistingEntry & { id?: string }>
+  existingEntries: Array<ExistingEntry & { id?: string }>,
+  threshold: number = SIMILARITY_THRESHOLD,
 ): DuplicateResult {
   // Check exact hash match
   for (const entry of existingEntries) {
@@ -88,7 +89,7 @@ export function isDuplicate(
     for (const entry of existingEntries) {
       if (entry.embedding && entry.embedding.length > 0) {
         const similarity = cosineSimilarity(embedding, entry.embedding);
-        if (similarity >= SIMILARITY_THRESHOLD) {
+        if (similarity >= threshold) {
           return {
             exact: false,
             similar: true,

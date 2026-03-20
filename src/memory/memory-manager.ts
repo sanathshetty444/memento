@@ -38,15 +38,24 @@ export interface MemoryManagerOptions {
   config?: MemoryManagerConfig;
 }
 
+interface CircuitBreakerLike {
+  execute<T>(fn: () => Promise<T>): Promise<T>;
+}
+
+interface WALLike {
+  append(operation: "upsert" | "delete", data: unknown): string;
+  markCommitted(id: string): void;
+  getPending(): Array<{ id: string; operation: string; data: unknown }>;
+}
+
 export class MemoryManager {
   private store: VectorStore;
   private embeddings: EmbeddingProvider;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private circuitBreaker: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private wal: any;
+  private circuitBreaker: CircuitBreakerLike | null;
+  private wal: WALLike | null;
   private cache: LRUCache<string, MemoryEntry> | null;
   private resilienceEnabled: boolean;
+  private initPromise: Promise<void> | null;
   private config: Required<MemoryManagerConfig>;
 
   constructor({ store, embeddings, enableResilience, config }: MemoryManagerOptions) {
@@ -66,9 +75,13 @@ export class MemoryManager {
       : null;
     this.circuitBreaker = null;
     this.wal = null;
+    this.initPromise = this.resilienceEnabled ? this.initResilience() : null;
+  }
 
-    if (this.resilienceEnabled) {
-      this.initResilience();
+  /** Await this before any operation to ensure resilience is ready. */
+  private async ensureReady(): Promise<void> {
+    if (this.initPromise) {
+      await this.initPromise;
     }
   }
 
@@ -95,12 +108,11 @@ export class MemoryManager {
    * Throws in browser if no explicit namespace is provided.
    */
   private async getNamespace(): Promise<string> {
-    try {
-      const { resolveNamespace } = await import("./namespace.js");
-      return resolveNamespace();
-    } catch {
-      throw new Error("namespace is required in browser environment");
+    if (typeof process === "undefined" || typeof process.cwd !== "function") {
+      throw new Error("namespace is required in browser environments — pass it explicitly");
     }
+    const { resolveNamespace } = await import("./namespace.js");
+    return resolveNamespace();
   }
 
   /**
@@ -108,6 +120,7 @@ export class MemoryManager {
    * deduplication, and embedding.
    */
   async save(options: SaveOptions): Promise<MemoryEntry[]> {
+    await this.ensureReady();
     const namespace = options.global
       ? GLOBAL_NAMESPACE
       : (options.namespace ?? await this.getNamespace());
@@ -153,7 +166,8 @@ export class MemoryManager {
           id: c.entry.id,
           contentHash: c.entry.contentHash,
           embedding: c.entry.embedding,
-        }))
+        })),
+        this.config.deduplicationThreshold,
       );
 
       // Exact duplicate: skip entirely
@@ -230,6 +244,7 @@ export class MemoryManager {
    * Recall memories relevant to a query within a namespace.
    */
   async recall(options: RecallOptions): Promise<MemoryResult[]> {
+    await this.ensureReady();
     const namespace = options.namespace ?? await this.getNamespace();
     const limit = Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
 
@@ -279,6 +294,7 @@ export class MemoryManager {
   async search(
     options: Omit<RecallOptions, "namespace">
   ): Promise<MemoryResult[]> {
+    await this.ensureReady();
     const limit = Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
 
     const queryEmbedding = await this.embeddings.embed(options.query);
@@ -322,6 +338,7 @@ export class MemoryManager {
    * Delete a memory entry by ID.
    */
   async forget(id: string): Promise<boolean> {
+    await this.ensureReady();
     const result = this.circuitBreaker
       ? await this.circuitBreaker.execute(() => this.store.delete(id))
       : await this.store.delete(id);
@@ -338,6 +355,7 @@ export class MemoryManager {
    * List memory entries with optional filters.
    */
   async list(options: ListOptions): Promise<MemoryEntry[]> {
+    await this.ensureReady();
     const namespace = options.namespace ?? await this.getNamespace();
 
     const listFn = () =>
@@ -357,6 +375,7 @@ export class MemoryManager {
    * Count memory entries in a namespace.
    */
   async count(namespace?: string): Promise<number> {
+    await this.ensureReady();
     const countFn = () => this.store.count(namespace);
 
     return this.circuitBreaker

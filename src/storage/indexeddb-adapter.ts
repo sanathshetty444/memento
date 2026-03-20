@@ -1,21 +1,10 @@
 import { openDB, type IDBPDatabase } from "idb";
-import type { MemoryEntry, MemoryResult } from "../memory/types.js";
+import type { MemoryEntry, MemoryResult, MemoryTag } from "../memory/types.js";
 import type { VectorStore, SearchFilters, ListFilters } from "./interface.js";
+import { cosineSimilarity } from "../memory/dedup.js";
 
 const STORE_NAME = "memories";
 const DB_VERSION = 1;
-
-function cosineSimilarity(a: number[], b: number[]): number {
-  if (a.length !== b.length || a.length === 0) return 0;
-  let dot = 0, magA = 0, magB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    magA += a[i] * a[i];
-    magB += b[i] * b[i];
-  }
-  const mag = Math.sqrt(magA) * Math.sqrt(magB);
-  return mag === 0 ? 0 : dot / mag;
-}
 
 export interface IndexedDBVectorStoreOptions {
   dbName?: string;
@@ -51,8 +40,8 @@ export class IndexedDBVectorStore implements VectorStore {
     const db = this.getDB();
     try {
       await db.put(STORE_NAME, entry);
-    } catch (err: any) {
-      if (err?.name === "QuotaExceededError") {
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "QuotaExceededError") {
         console.warn("IndexedDB quota exceeded — entry not stored:", entry.id);
         return;
       }
@@ -121,7 +110,7 @@ export class IndexedDBVectorStore implements VectorStore {
 
   private matchesSearchFilters(entry: MemoryEntry, filters: SearchFilters): boolean {
     if (filters.tags && filters.tags.length > 0) {
-      const hasTag = filters.tags.some((t) => entry.metadata.tags.includes(t as any));
+      const hasTag = filters.tags.some((t) => entry.metadata.tags.includes(t as MemoryTag));
       if (!hasTag) return false;
     }
     if (filters.after && entry.metadata.timestamp < filters.after) return false;
@@ -131,7 +120,7 @@ export class IndexedDBVectorStore implements VectorStore {
 
   private matchesListFilters(entry: MemoryEntry, filters: ListFilters): boolean {
     if (filters.tags && filters.tags.length > 0) {
-      const hasTag = filters.tags.some((t) => entry.metadata.tags.includes(t as any));
+      const hasTag = filters.tags.some((t) => entry.metadata.tags.includes(t as MemoryTag));
       if (!hasTag) return false;
     }
     return true;

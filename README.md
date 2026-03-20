@@ -34,7 +34,7 @@ That's it. Your next Claude Code session will automatically capture and recall c
 
 | File | What |
 |------|------|
-| `~/.claude/mcp.json` | MCP server — gives Claude `memory_save`, `memory_recall`, etc. |
+| `~/.claude.json` | MCP server — gives Claude `memory_save`, `memory_recall`, etc. |
 | `~/.claude/settings.json` | PostToolUse + Stop hooks — auto-captures context silently |
 | `~/.claude/CLAUDE.md` | Instructions for Claude to auto-recall on session start |
 | `~/.claude-memory/` | Data directory for stored memories |

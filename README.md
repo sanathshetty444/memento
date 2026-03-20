@@ -22,7 +22,7 @@ Memento captures conversation context, decisions, and code knowledge into a vect
 
 ## Quick Start
 
-> Requires Node.js >= 20
+> Requires Node.js >= 20. Works with **Claude Code** and **OpenCode**.
 
 ```bash
 # One command — that's it
@@ -49,12 +49,22 @@ That's it. Your next Claude Code session will automatically capture and recall c
 
 ### What `memento setup` configures
 
+**Claude Code:**
+
 | File | What |
 |------|------|
 | `~/.claude.json` | MCP server — gives Claude `memory_save`, `memory_recall`, etc. |
 | `~/.claude/settings.json` | PostToolUse + Stop hooks — auto-captures context silently |
 | `~/.claude/CLAUDE.md` | Instructions for Claude to auto-recall on session start |
 | `~/.claude-memory/` | Data directory for stored memories |
+
+**OpenCode** (auto-detected):
+
+| File | What |
+|------|------|
+| `~/.config/opencode/opencode.json` | MCP server config |
+| `~/.config/opencode/plugins/memento-capture.js` | Auto-capture plugin (tool.execute.after + session.idle) |
+| `~/.claude/CLAUDE.md` | Shared instructions (OpenCode falls back to CLAUDE.md) |
 
 ### CLI Commands
 
@@ -198,8 +208,9 @@ Memento
   │   ├── Gemini SDK (optional)
   │   └── OpenAI (optional)
   ├── Hooks (auto-capture)
-  │   ├── PostToolUse → capture queue
-  │   └── Stop → session summary + queue processing
+  │   ├── PostToolUse → capture queue (Claude Code)
+  │   ├── Stop → session summary + queue processing (Claude Code)
+  │   └── OpenCode plugin → capture + flush (OpenCode)
   ├── Browser Bundle (ESM, ~29KB)
   │   └── import from "memento-memory/browser"
   └── Resilience

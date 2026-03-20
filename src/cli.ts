@@ -8,7 +8,7 @@
  *   memento status     — Show current installation status
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -240,7 +240,7 @@ function setupOpenCode(): void {
 
 // ── Teardown ───────────────────────────────────────────────────────
 function teardown(): void {
-  console.log("\n  Memento — Removing Claude Code integration\n");
+  console.log("\n  Memento — Removing integration\n");
 
   // 1. Remove MCP server from ~/.claude.json
   const config = readJSON(MCP_CONFIG_PATH) as { mcpServers?: Record<string, unknown> };
@@ -295,6 +295,9 @@ function teardown(): void {
     info("CLAUDE.md instructions not found (skipped)");
   }
 
+  // 4. Remove OpenCode config (if present)
+  teardownOpenCode();
+
   console.log(`
   ──────────────────────────────────────────
   Done! Memento integration removed.
@@ -303,6 +306,25 @@ function teardown(): void {
   To delete them: rm -rf ~/.claude-memory/
   ──────────────────────────────────────────
 `);
+}
+
+function teardownOpenCode(): void {
+  if (!existsSync(OPENCODE_CONFIG_DIR)) return;
+
+  // 1. Remove MCP entry from opencode.json (preserve other config)
+  const config = readJSON(OPENCODE_CONFIG_PATH) as { mcp?: Record<string, unknown> };
+  if (config.mcp && "memory" in config.mcp) {
+    delete config.mcp.memory;
+    if (Object.keys(config.mcp).length === 0) delete config.mcp;
+    writeJSON(OPENCODE_CONFIG_PATH, config);
+    success("Removed MCP server from opencode.json");
+  }
+
+  // 2. Remove capture plugin
+  if (existsSync(OPENCODE_PLUGIN_PATH)) {
+    unlinkSync(OPENCODE_PLUGIN_PATH);
+    success("Removed OpenCode capture plugin");
+  }
 }
 
 // ── Status ─────────────────────────────────────────────────────────

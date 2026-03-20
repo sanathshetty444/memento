@@ -22,9 +22,11 @@ Memento captures conversation context, decisions, and code knowledge into a vect
 
 ## Quick Start
 
+> Requires Node.js >= 20
+
 ```bash
 # One command — that's it
-npx memento-memory
+npx memento-memory setup
 ```
 
 Or install globally:
@@ -43,7 +45,7 @@ npm install && npm run build
 node dist/cli.js setup
 ```
 
-Your next Claude Code session will automatically capture and recall context.
+That's it. Your next Claude Code session will automatically capture and recall context.
 
 ### What `memento setup` configures
 
@@ -57,10 +59,12 @@ Your next Claude Code session will automatically capture and recall context.
 ### CLI Commands
 
 ```bash
-npx memento-memory              # Setup (default, idempotent, safe to re-run)
-npx memento-memory status       # Check what's configured
-npx memento-memory teardown     # Remove config (keeps stored memories)
+memento setup       # Configure everything (idempotent, safe to re-run)
+memento status      # Check what's configured
+memento teardown    # Remove config (keeps stored memories)
 ```
+
+All commands also work with `npx memento-memory <command>`.
 
 ## How it works
 

@@ -18,10 +18,13 @@ export class GeminiFetchEmbeddingProvider implements EmbeddingProvider {
   }
 
   async embed(text: string): Promise<number[]> {
-    const url = `${BASE_URL}/${this.modelName}:embedContent?key=${this.apiKey}`;
+    const url = `${BASE_URL}/${this.modelName}:embedContent`;
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": this.apiKey,
+      },
       body: JSON.stringify({
         model: `models/${this.modelName}`,
         content: { parts: [{ text }] },
@@ -40,10 +43,16 @@ export class GeminiFetchEmbeddingProvider implements EmbeddingProvider {
   }
 
   async embedBatch(texts: string[]): Promise<number[][]> {
-    const url = `${BASE_URL}/${this.modelName}:batchEmbedContents?key=${this.apiKey}`;
+    if (texts.length > 100) {
+      throw new Error("Gemini batch embedding supports a maximum of 100 texts per request");
+    }
+    const url = `${BASE_URL}/${this.modelName}:batchEmbedContents`;
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": this.apiKey,
+      },
       body: JSON.stringify({
         requests: texts.map((text) => ({
           model: `models/${this.modelName}`,

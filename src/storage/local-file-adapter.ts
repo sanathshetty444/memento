@@ -12,20 +12,9 @@
 import { readFileSync, writeFileSync, unlinkSync, mkdirSync, readdirSync, existsSync } from "node:fs";
 import { join, basename } from "node:path";
 import { homedir } from "node:os";
-import type { MemoryEntry, MemoryResult } from "../memory/types.js";
+import type { MemoryEntry, MemoryResult, MemoryTag } from "../memory/types.js";
 import type { VectorStore, SearchFilters, ListFilters } from "./interface.js";
-
-function cosineSimilarity(a: number[], b: number[]): number {
-  if (a.length !== b.length || a.length === 0) return 0;
-  let dot = 0, magA = 0, magB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    magA += a[i] * a[i];
-    magB += b[i] * b[i];
-  }
-  const mag = Math.sqrt(magA) * Math.sqrt(magB);
-  return mag === 0 ? 0 : dot / mag;
-}
+import { cosineSimilarity } from "../memory/dedup.js";
 
 function sanitizeName(name: string): string {
   return name.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -162,7 +151,7 @@ export class LocalFileAdapter implements VectorStore {
 
   private matchesFilters(entry: MemoryEntry, filters: SearchFilters): boolean {
     if (filters.tags && filters.tags.length > 0) {
-      const hasTag = filters.tags.some(t => entry.metadata.tags.includes(t as any));
+      const hasTag = filters.tags.some(t => entry.metadata.tags.includes(t as MemoryTag));
       if (!hasTag) return false;
     }
     if (filters.after && entry.metadata.timestamp < filters.after) return false;
@@ -172,7 +161,7 @@ export class LocalFileAdapter implements VectorStore {
 
   private matchesListFilters(entry: MemoryEntry, filters: ListFilters): boolean {
     if (filters.tags && filters.tags.length > 0) {
-      const hasTag = filters.tags.some(t => entry.metadata.tags.includes(t as any));
+      const hasTag = filters.tags.some(t => entry.metadata.tags.includes(t as MemoryTag));
       if (!hasTag) return false;
     }
     return true;

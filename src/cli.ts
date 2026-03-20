@@ -18,7 +18,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ── Paths ──────────────────────────────────────────────────────────
 const CLAUDE_DIR = join(homedir(), ".claude");
 const SETTINGS_PATH = join(CLAUDE_DIR, "settings.json");
-const MCP_PATH = join(CLAUDE_DIR, "mcp.json");
+const MCP_CONFIG_PATH = join(homedir(), ".claude.json"); // Claude Code CLI reads MCP from here
 const CLAUDE_MD_PATH = join(CLAUDE_DIR, "CLAUDE.md");
 const DATA_DIR = join(homedir(), ".claude-memory");
 
@@ -42,7 +42,7 @@ const MEMENTO_MD_BLOCK = `${MEMENTO_MD_START}
 
 A semantic memory system runs via MCP. Context is auto-captured in the background via hooks.
 
-**On session start**: If the user's request relates to prior work or continues a previous conversation, use \`memory_recall\` with a relevant query to restore context. This compensates for any context lost during compaction.
+**On every session start**: ALWAYS use \`memory_recall\` with a query relevant to the user's request to restore context. Do this unconditionally — do not skip even if the request seems unrelated to prior work. This ensures continuity across sessions and compensates for context lost during compaction.
 
 **During conversation**: When the user makes an important decision, discovers a critical bug, or establishes an architecture pattern, use \`memory_save\` with appropriate tags to persist it.
 
@@ -105,18 +105,18 @@ function setup(): void {
   mkdirSync(DATA_DIR, { recursive: true });
   success("Data directory: ~/.claude-memory/");
 
-  // 2. Configure MCP server in ~/.claude/mcp.json
-  const mcp = readJSON(MCP_PATH) as { mcpServers?: Record<string, unknown> };
-  if (!mcp.mcpServers) mcp.mcpServers = {};
+  // 2. Configure MCP server in ~/.claude.json (Claude Code CLI reads from here)
+  const config = readJSON(MCP_CONFIG_PATH) as { mcpServers?: Record<string, unknown> };
+  if (!config.mcpServers) config.mcpServers = {};
 
-  (mcp.mcpServers as Record<string, unknown>)["memory"] = {
+  (config.mcpServers as Record<string, unknown>)["memory"] = {
     command: "node",
     args: [MCP_SERVER_PATH],
     cwd: PACKAGE_DIR,
   };
 
-  writeJSON(MCP_PATH, mcp);
-  success("MCP server: ~/.claude/mcp.json");
+  writeJSON(MCP_CONFIG_PATH, config);
+  success("MCP server: ~/.claude.json");
 
   // 3. Configure hooks in ~/.claude/settings.json
   const settings = readJSON(SETTINGS_PATH) as {
@@ -214,12 +214,13 @@ function setup(): void {
 function teardown(): void {
   console.log("\n  Memento — Removing Claude Code integration\n");
 
-  // 1. Remove MCP server
-  const mcp = readJSON(MCP_PATH) as { mcpServers?: Record<string, unknown> };
-  if (mcp.mcpServers && "memory" in mcp.mcpServers) {
-    delete mcp.mcpServers.memory;
-    writeJSON(MCP_PATH, mcp);
-    success("Removed MCP server from ~/.claude/mcp.json");
+  // 1. Remove MCP server from ~/.claude.json
+  const config = readJSON(MCP_CONFIG_PATH) as { mcpServers?: Record<string, unknown> };
+  if (config.mcpServers && "memory" in config.mcpServers) {
+    delete config.mcpServers.memory;
+    if (Object.keys(config.mcpServers).length === 0) delete config.mcpServers;
+    writeJSON(MCP_CONFIG_PATH, config);
+    success("Removed MCP server from ~/.claude.json");
   } else {
     info("MCP server not configured (skipped)");
   }
@@ -283,8 +284,8 @@ function status(): void {
   console.log("\n  Memento — Installation Status\n");
 
   // Check MCP server
-  const mcp = readJSON(MCP_PATH) as { mcpServers?: Record<string, unknown> };
-  if (mcp.mcpServers && "memory" in mcp.mcpServers) {
+  const config = readJSON(MCP_CONFIG_PATH) as { mcpServers?: Record<string, unknown> };
+  if (config.mcpServers && "memory" in config.mcpServers) {
     success("MCP server configured");
   } else {
     warn("MCP server not configured");

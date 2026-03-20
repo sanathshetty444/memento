@@ -43,7 +43,7 @@ describe("GeminiFetchEmbeddingProvider", () => {
       expect.stringContaining("text-embedding-004:embedContent"),
       expect.objectContaining({
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-goog-api-key": "test-key" },
         body: expect.stringContaining("hello world"),
       }),
     );

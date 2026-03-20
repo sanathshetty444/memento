@@ -34,7 +34,7 @@ That's it. Your next Claude Code session will automatically capture and recall c
 
 | File | What |
 |------|------|
-| `~/.claude/mcp.json` | MCP server — gives Claude `memory_save`, `memory_recall`, etc. |
+| `~/.claude.json` | MCP server — gives Claude `memory_save`, `memory_recall`, etc. |
 | `~/.claude/settings.json` | PostToolUse + Stop hooks — auto-captures context silently |
 | `~/.claude/CLAUDE.md` | Instructions for Claude to auto-recall on session start |
 | `~/.claude-memory/` | Data directory for stored memories |
@@ -95,7 +95,7 @@ memento teardown
 |----------|-------------|
 | `Edit`, `Bash`, `Write` tool calls | `Read`, `Glob`, `Grep` (read-only, low signal) |
 | Outputs ≥ 50 chars | Short outputs (< 50 chars) |
-| Unique content | Duplicates (hash + 95% cosine similarity) |
+| Unique content | Duplicates (hash + 92% cosine similarity) |
 | Redacted content | Raw secrets (API keys, tokens, passwords) |
 | — | `memory_*` tool calls (prevents circular capture) |
 
@@ -179,7 +179,7 @@ Memento
 
 ```bash
 npm run build        # Compile TypeScript
-npm test             # Run tests (75 tests)
+npm test             # Run tests (99 tests)
 npm run test:watch   # Watch mode
 npx tsc --noEmit     # Type-check only
 ```

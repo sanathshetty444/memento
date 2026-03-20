@@ -318,12 +318,16 @@ function teardownOpenCode(): void {
     if (Object.keys(config.mcp).length === 0) delete config.mcp;
     writeJSON(OPENCODE_CONFIG_PATH, config);
     success("Removed MCP server from opencode.json");
+  } else {
+    info("OpenCode MCP not configured (skipped)");
   }
 
   // 2. Remove capture plugin
   if (existsSync(OPENCODE_PLUGIN_PATH)) {
     unlinkSync(OPENCODE_PLUGIN_PATH);
     success("Removed OpenCode capture plugin");
+  } else {
+    info("OpenCode plugin not found (skipped)");
   }
 }
 

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- OpenCode support: auto-detects OpenCode and configures MCP server + capture plugin during `memento setup`
+- OpenCode capture plugin with `tool.execute.after` and `session.idle` hooks
+
 ## [0.3.0] - 2026-03-20
 
 ### Added

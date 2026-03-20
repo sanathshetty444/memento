@@ -1,3 +1,7 @@
+[![npm version](https://img.shields.io/npm/v/memento-memory)](https://www.npmjs.com/package/memento-memory)
+[![CI](https://github.com/sanathshetty444/memento/actions/workflows/ci.yml/badge.svg)](https://github.com/sanathshetty444/memento/actions/workflows/ci.yml)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+
 # Memento
 
 Persistent semantic memory for Claude Code. Save, recall, and search context across sessions — even after autocompact.
@@ -180,10 +184,16 @@ Memento
 
 ```bash
 npm run build        # Compile TypeScript
-npm test             # Run tests (99 tests)
+npm test             # Run tests
 npm run test:watch   # Watch mode
+npm run lint         # Lint with ESLint
+npm run format:check # Check Prettier formatting
 npx tsc --noEmit     # Type-check only
 ```
+
+## Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 

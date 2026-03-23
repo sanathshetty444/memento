@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memento — Memory Graph</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <link rel="stylesheet" href="/ui/graph.css">
+</head>
+<body>
+  <aside id="sidebar">
+    <h1>Memento</h1>
+    <p class="subtitle">Memory Graph</p>
+
+    <section class="filter-section">
+      <h2>Search</h2>
+      <input type="text" id="search-box" placeholder="Search memories..." />
+    </section>
+
+    <section class="filter-section">
+      <h2>Namespace</h2>
+      <input type="text" id="namespace-filter" placeholder="Filter by namespace..." />
+    </section>
+
+    <section class="filter-section">
+      <h2>Tags</h2>
+      <div id="tag-filters"></div>
+    </section>
+
+    <section class="filter-section">
+      <h2>Date Range</h2>
+      <label>From <input type="date" id="date-from" /></label>
+      <label>To <input type="date" id="date-to" /></label>
+    </section>
+
+    <section id="detail-panel" class="filter-section" style="display:none;">
+      <h2>Details</h2>
+      <div id="detail-content"></div>
+    </section>
+
+    <div class="stats" id="graph-stats"></div>
+  </aside>
+
+  <main id="graph-area">
+    <svg id="graph-svg"></svg>
+  </main>
+
+  <div id="tooltip"></div>
+
+  <script src="/ui/graph.js"></script>
+</body>
+</html>

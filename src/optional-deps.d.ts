@@ -21,3 +21,13 @@ declare module "openai" {
     };
   }
 }
+
+declare module "pdf-parse" {
+  function pdfParse(buffer: Buffer): Promise<{ text: string; info?: Record<string, string> }>;
+  export default pdfParse;
+}
+
+declare module "tesseract.js" {
+  function recognize(image: string, lang?: string): Promise<{ data: { text: string } }>;
+  export default { recognize };
+}

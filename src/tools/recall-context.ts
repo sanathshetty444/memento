@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { MemoryManager } from "../memory/memory-manager.js";
+import { BUILT_IN_TAGS } from "../memory/types.js";
 
 export function registerRecallTool(server: McpServer, manager: MemoryManager) {
   server.tool(
@@ -10,21 +11,22 @@ export function registerRecallTool(server: McpServer, manager: MemoryManager) {
       query: z.string().describe("The search query to find relevant memories"),
       namespace: z.string().optional().describe("Project namespace (auto-detected if omitted)"),
       tags: z
-        .array(
-          z.enum([
-            "conversation",
-            "decision",
-            "code",
-            "error",
-            "architecture",
-            "config",
-            "dependency",
-            "todo",
-          ]),
-        )
+        .array(z.string())
         .optional()
-        .describe("Filter by semantic tags"),
+        .describe(
+          `Filter by semantic tags. Built-in: ${BUILT_IN_TAGS.join(", ")}. Custom tags also accepted.`,
+        ),
       limit: z.number().optional().describe("Maximum number of results (default 10, max 100)"),
+      container: z
+        .string()
+        .optional()
+        .describe("Filter by container for multi-project/team scoping"),
+      searchMode: z
+        .enum(["vector", "hybrid", "keyword"])
+        .optional()
+        .describe(
+          "Search strategy: 'vector' (default) for cosine similarity, 'keyword' for BM25 keyword matching, 'hybrid' for weighted combination of both",
+        ),
     },
     async (args) => {
       const results = await manager.recall({
@@ -32,6 +34,8 @@ export function registerRecallTool(server: McpServer, manager: MemoryManager) {
         namespace: args.namespace,
         tags: args.tags,
         limit: args.limit ?? 10,
+        container: args.container,
+        searchMode: args.searchMode,
       });
 
       if (results.length === 0) {
@@ -57,6 +61,7 @@ export function registerRecallTool(server: McpServer, manager: MemoryManager) {
           `Summary: ${entry.metadata.summary ?? "N/A"}`,
           `Tags: ${tags}`,
           `Timestamp: ${entry.metadata.timestamp}`,
+          ...(entry.metadata.container ? [`Container: ${entry.metadata.container}`] : []),
           `Content: ${preview}`,
         ].join("\n");
       });

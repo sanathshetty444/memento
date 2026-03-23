@@ -1,0 +1,22 @@
+# Source code (dist is published)
+src/
+tests/
+
+# Bundled model (downloaded automatically on first run)
+Xenova/
+
+# Dev and config files
+tsconfig.json
+tsup.config.ts
+.git/
+.gitignore
+.DS_Store
+*.tsbuildinfo
+
+# Docs not needed in package
+PRD.md
+Techspec.md
+CHANGELOG.md
+CLAUDE.md
+article.md
+docs/

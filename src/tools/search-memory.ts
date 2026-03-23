@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { MemoryManager } from "../memory/memory-manager.js";
+import { BUILT_IN_TAGS } from "../memory/types.js";
 
 export function registerSearchTool(server: McpServer, manager: MemoryManager) {
   server.tool(
@@ -9,27 +10,25 @@ export function registerSearchTool(server: McpServer, manager: MemoryManager) {
     {
       query: z.string().describe("The search query to find relevant memories"),
       tags: z
-        .array(
-          z.enum([
-            "conversation",
-            "decision",
-            "code",
-            "error",
-            "architecture",
-            "config",
-            "dependency",
-            "todo",
-          ]),
-        )
+        .array(z.string())
         .optional()
-        .describe("Filter by semantic tags"),
+        .describe(
+          `Filter by semantic tags. Built-in: ${BUILT_IN_TAGS.join(", ")}. Custom tags also accepted.`,
+        ),
       limit: z.number().optional().describe("Maximum number of results (default 10, max 100)"),
+      searchMode: z
+        .enum(["vector", "hybrid", "keyword"])
+        .optional()
+        .describe(
+          "Search strategy: 'vector' (default) for cosine similarity, 'keyword' for BM25 keyword matching, 'hybrid' for weighted combination of both",
+        ),
     },
     async (args) => {
       const results = await manager.search({
         query: args.query,
         tags: args.tags,
         limit: args.limit ?? 10,
+        searchMode: args.searchMode,
       });
 
       if (results.length === 0) {

@@ -19,18 +19,48 @@ interface HookInput {
   cwd: string;
 }
 
-interface QueueEntry {
+export interface QueueEntry {
   timestamp: string;
   toolName: string;
   content: string;
   sessionId: string;
+  priority?: "low" | "normal" | "high";
 }
 
 // Read-only / low-signal tools that should not be captured
 const DENYLIST = new Set(["Read", "Glob", "Grep", "ls", "cat", "head", "tail"]);
 
+// High-value tools that always get captured
+const HIGH_VALUE_TOOLS = new Set(["Write", "Edit", "Bash"]);
+
+// Signal keywords that indicate high-priority content
+const SIGNAL_KEYWORDS = [
+  "remember",
+  "important",
+  "decision",
+  "architecture",
+  "bug",
+  "fix",
+  "never",
+  "always",
+  "convention",
+  "pattern",
+  "rule",
+  "workaround",
+  "deprecated",
+  "migrate",
+];
+
 const MIN_OUTPUT_LENGTH = 50;
 const MAX_OUTPUT_LENGTH = 10_000;
+
+/**
+ * Check if content contains any signal keywords (case-insensitive).
+ */
+function hasSignalKeywords(text: string): boolean {
+  const lower = text.toLowerCase();
+  return SIGNAL_KEYWORDS.some((kw) => lower.includes(kw));
+}
 
 function main(): void {
   try {
@@ -61,13 +91,26 @@ function main(): void {
       process.exit(0);
     }
 
+    const inputSummary = JSON.stringify(input.tool_input).slice(0, 500);
+    const combinedText = `${inputSummary} ${output}`;
+
+    // Tier 3: Signal-based filtering — skip non-high-value tools with no signal keywords
+    const isHighValueTool = HIGH_VALUE_TOOLS.has(input.tool_name);
+    const hasSignal = hasSignalKeywords(combinedText);
+
+    if (!isHighValueTool && !hasSignal) {
+      process.exit(0); // Noise reduction: skip low-signal captures
+    }
+
+    // Determine priority based on signal keywords
+    const priority = hasSignal ? "high" : "normal";
+
     const trimmedOutput =
       output.length > MAX_OUTPUT_LENGTH
         ? output.slice(0, MAX_OUTPUT_LENGTH) + "\n...[truncated]"
         : output;
 
-    // Tier 3: Build queue entry and append to capture queue
-    const inputSummary = JSON.stringify(input.tool_input).slice(0, 500);
+    // Tier 4: Build queue entry and append to capture queue
     const content = `[${input.tool_name}] Input: ${inputSummary}\nOutput: ${trimmedOutput}`;
 
     const entry: QueueEntry = {
@@ -75,6 +118,7 @@ function main(): void {
       toolName: input.tool_name,
       content,
       sessionId: input.session_id,
+      priority,
     };
 
     const dataDir = join(homedir(), ".claude-memory");

@@ -22,16 +22,20 @@ import { createStore } from "../storage/index.js";
 import { createEmbeddingProvider } from "../embeddings/index.js";
 import type { VectorStore } from "../storage/interface.js";
 import type { EmbeddingProvider } from "../embeddings/interface.js";
-import type { MemoryEntry, MemorySource } from "../memory/types.js";
+import type { MemoryEntry, MemorySource, MemoryPriority } from "../memory/types.js";
 
 interface QueueEntry {
   timestamp: string;
   toolName: string;
   content: string;
   sessionId: string;
+  priority?: MemoryPriority;
 }
 
 const BATCH_SIZE = 20;
+
+// High-priority entries use a stricter dedup threshold (more likely to be unique/important)
+const HIGH_PRIORITY_DEDUP_THRESHOLD = 0.95;
 
 function getDataDir(): string {
   return join(homedir(), ".claude-memory");
@@ -161,6 +165,12 @@ async function processEntry(
     overlapWords: config.memory.chunkOverlap,
   });
 
+  // Use stricter dedup threshold for high-priority entries
+  const dedupThreshold =
+    entry.priority === "high"
+      ? HIGH_PRIORITY_DEDUP_THRESHOLD
+      : config.memory.deduplicationThreshold;
+
   let storedCount = 0;
   const parentId = randomUUID();
 
@@ -181,16 +191,16 @@ async function processEntry(
       embedding: r.entry.embedding,
     }));
 
-    const dupResult = isDuplicate(
-      hash,
-      embedding,
-      existingEntries,
-      config.memory.deduplicationThreshold,
-    );
+    const dupResult = isDuplicate(hash, embedding, existingEntries, dedupThreshold);
 
     if (dupResult.exact || dupResult.similar) {
       continue; // Skip duplicates
     }
+
+    // Compute conversationId from namespace + date + sessionId prefix
+    const entryDate = new Date(entry.timestamp).toISOString().slice(0, 10); // YYYY-MM-DD
+    const sessionPrefix = (entry.sessionId ?? "unknown").slice(0, 8);
+    const conversationId = `${namespace}_${entryDate}_${sessionPrefix}`;
 
     // Step 6: Store the memory entry
     const memoryEntry: MemoryEntry = {
@@ -205,7 +215,9 @@ async function processEntry(
         timestamp: entry.timestamp,
         source: sourceFromToolName(entry.toolName),
         sessionId: entry.sessionId,
+        conversationId,
         summary: chunks.length > 1 ? `Chunk ${chunk.index + 1}/${chunk.total}` : undefined,
+        priority: entry.priority ?? "normal",
       },
     };
 

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { MemoryManager } from "../memory/memory-manager.js";
+import { BUILT_IN_TAGS } from "../memory/types.js";
 
 export function registerSaveTool(server: McpServer, manager: MemoryManager) {
   server.tool(
@@ -9,25 +10,22 @@ export function registerSaveTool(server: McpServer, manager: MemoryManager) {
     {
       content: z.string().describe("The content to remember"),
       tags: z
-        .array(
-          z.enum([
-            "conversation",
-            "decision",
-            "code",
-            "error",
-            "architecture",
-            "config",
-            "dependency",
-            "todo",
-          ]),
-        )
+        .array(z.string())
         .optional()
-        .describe("Semantic tags"),
+        .describe(
+          `Semantic tags. Built-in: ${BUILT_IN_TAGS.join(", ")}. Custom tags also accepted.`,
+        ),
       namespace: z.string().optional().describe("Project namespace (auto-detected if omitted)"),
       global: z
         .boolean()
         .optional()
         .describe("Save to global namespace accessible across all projects"),
+      container: z
+        .string()
+        .optional()
+        .describe(
+          "Container for multi-project/team scoping (e.g. 'team-backend', 'personal'). Defaults to namespace.",
+        ),
     },
     async (args) => {
       const entries = await manager.save({
@@ -36,6 +34,8 @@ export function registerSaveTool(server: McpServer, manager: MemoryManager) {
         namespace: args.namespace,
         global: args.global,
         source: "explicit",
+        container: args.container,
+        priority: "high",
       });
       return {
         content: [

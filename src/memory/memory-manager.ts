@@ -16,12 +16,20 @@ import {
   GLOBAL_NAMESPACE,
   DEFAULT_LIMIT,
   MAX_LIMIT,
+  type MemoryTag,
 } from "./types.js";
+import { addRelation } from "./relations.js";
+import { detectContradictionWithContext } from "./contradiction.js";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { redact } from "./redactor.js";
 import { autoTag } from "./tagger.js";
 import { chunkContent } from "./chunker.js";
 import { contentHash, isDuplicate } from "./dedup.js";
+import { rerank } from "./reranker.js";
+import { calculateImportance } from "./importance.js";
 import { LRUCache } from "../resilience/cache.js";
+import { updateEntityIndex } from "./entities.js";
 
 export interface MemoryManagerConfig {
   deduplicationThreshold?: number; // Default: 0.92
@@ -168,6 +176,21 @@ export class MemoryManager {
         continue;
       }
 
+      // Contradiction detection: check if new content supersedes an existing entry
+      const contradictionCandidates = candidates.map((c: MemoryResult) => ({
+        id: c.entry.id,
+        content: c.entry.content,
+        tags: c.entry.metadata.tags,
+        files: c.entry.metadata.files,
+        score: c.score,
+      }));
+      const contradiction = detectContradictionWithContext(
+        chunk.content,
+        mergedTags,
+        options.files,
+        contradictionCandidates,
+      );
+
       const entryId = uuidv4();
 
       // First chunk becomes the parent for subsequent chunks
@@ -180,6 +203,28 @@ export class MemoryManager {
         relatedMemoryIds.push(dupResult.similarId);
       }
 
+      // Auto-create "references" relations for candidates with score between 0.7 and dedup threshold
+      for (const candidate of candidates) {
+        if (candidate.score >= 0.7 && candidate.score < this.config.deduplicationThreshold) {
+          relatedMemoryIds.push(candidate.entry.id);
+          try {
+            const dataDir = join(homedir(), ".claude-memory");
+            addRelation(dataDir, namespace, {
+              sourceId: entryId,
+              targetId: candidate.entry.id,
+              type: "references",
+              strength: candidate.score,
+              createdAt: new Date().toISOString(),
+            });
+          } catch {
+            // Best-effort: don't fail the save if relation creation fails
+          }
+        }
+      }
+
+      const source = options.source ?? "explicit";
+      const importance = calculateImportance(source, mergedTags as MemoryTag[], options.priority);
+
       const entry: MemoryEntry = {
         id: entryId,
         content: chunk.content,
@@ -188,17 +233,58 @@ export class MemoryManager {
         ...(chunks.length > 1 && parentId && entryId !== parentId ? { parentId } : {}),
         metadata: {
           namespace,
-          tags: mergedTags,
+          tags: mergedTags as MemoryTag[],
           timestamp: new Date().toISOString(),
-          source: options.source ?? "explicit",
+          source,
+          importance,
           ...(options.files ? { files: options.files } : {}),
           ...(options.functions ? { functions: options.functions } : {}),
           ...(options.sessionId ? { sessionId: options.sessionId } : {}),
           summary:
             chunks.length > 1 ? `${summary} [chunk ${chunk.index + 1}/${chunk.total}]` : summary,
           ...(relatedMemoryIds.length > 0 ? { relatedMemoryIds } : {}),
+          ...(options.container ? { container: options.container } : {}),
+          ...(options.priority ? { priority: options.priority } : {}),
         },
       };
+
+      // Handle contradiction: create relation, reduce old entry importance, update summary
+      if (contradiction) {
+        try {
+          const dataDir = join(homedir(), ".claude-memory");
+          // Create "supersedes" relation from new entry to contradicted entry
+          addRelation(dataDir, namespace, {
+            sourceId: entryId,
+            targetId: contradiction.contradictedId,
+            type: "supersedes",
+            strength: contradiction.confidence,
+            createdAt: new Date().toISOString(),
+          });
+
+          // Reduce contradicted entry's importance to 0.1 (fire-and-forget)
+          const contradictedCandidate = candidates.find(
+            (c: MemoryResult) => c.entry.id === contradiction.contradictedId,
+          );
+          if (contradictedCandidate) {
+            const updatedOldEntry: MemoryEntry = {
+              ...contradictedCandidate.entry,
+              metadata: {
+                ...contradictedCandidate.entry.metadata,
+                importance: 0.1,
+              },
+            };
+            this.store.upsert(updatedOldEntry).catch(() => {
+              // Best-effort: don't fail the save if importance update fails
+            });
+          }
+        } catch {
+          // Best-effort: don't fail the save if contradiction handling fails
+        }
+
+        // Append supersedes info to the summary
+        const currentSummary = entry.metadata.summary ?? "";
+        entry.metadata.summary = `${currentSummary} [supersedes: ${contradiction.contradictedId}]`;
+      }
 
       // WAL: append before upsert
       let walId: string | undefined;
@@ -224,6 +310,14 @@ export class MemoryManager {
       }
 
       savedEntries.push(entry);
+
+      // Entity extraction: index entities from the saved content (fire-and-forget)
+      try {
+        const dataDir = join(homedir(), ".claude-memory");
+        updateEntityIndex(dataDir, namespace, entry.id, entry.content);
+      } catch {
+        // Best-effort: don't fail the save if entity indexing fails
+      }
     }
 
     return savedEntries;
@@ -247,20 +341,40 @@ export class MemoryManager {
           after: options.after,
           before: options.before,
           limit,
+          searchMode: options.searchMode,
+          query: options.query,
         });
 
       const results = this.circuitBreaker
         ? await this.circuitBreaker.execute(searchFn)
         : await searchFn();
 
+      // Rerank results using multiple signals
+      const rerankedResults = rerank(results, options.query);
+
       // Populate cache from results
       if (this.cache) {
-        for (const result of results) {
+        for (const result of rerankedResults) {
           this.cache.set(result.entry.id, result.entry);
         }
       }
 
-      return results;
+      // Increment accessCount on recalled entries (fire-and-forget)
+      for (const result of rerankedResults) {
+        const entry = result.entry;
+        const updatedEntry: MemoryEntry = {
+          ...entry,
+          metadata: {
+            ...entry.metadata,
+            accessCount: (entry.metadata.accessCount ?? 0) + 1,
+          },
+        };
+        this.store.upsert(updatedEntry).catch(() => {
+          // Best-effort: ignore failures for access count updates
+        });
+      }
+
+      return rerankedResults;
     } catch (error) {
       // Fallback to cache if circuit breaker is open
       if (this.cache && this.cache.size > 0) {
@@ -293,20 +407,25 @@ export class MemoryManager {
           after: options.after,
           before: options.before,
           limit,
+          searchMode: options.searchMode,
+          query: options.query,
         });
 
       const results = this.circuitBreaker
         ? await this.circuitBreaker.execute(searchFn)
         : await searchFn();
 
+      // Rerank results using multiple signals
+      const rerankedResults = rerank(results, options.query);
+
       // Populate cache from results
       if (this.cache) {
-        for (const result of results) {
+        for (const result of rerankedResults) {
           this.cache.set(result.entry.id, result.entry);
         }
       }
 
-      return results;
+      return rerankedResults;
     } catch (error) {
       // Fallback to cache if circuit breaker is open
       if (this.cache && this.cache.size > 0) {

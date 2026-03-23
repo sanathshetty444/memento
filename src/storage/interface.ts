@@ -1,11 +1,16 @@
 import { MemoryEntry, MemoryResult } from "../memory/types.js";
 
+export type SearchMode = "vector" | "hybrid" | "keyword";
+
 export interface SearchFilters {
   namespace?: string;
   tags?: string[];
   after?: string;
   before?: string;
   limit: number;
+  searchMode?: SearchMode;
+  /** Raw query text — required for keyword and hybrid search modes (BM25). */
+  query?: string;
 }
 
 export interface ListFilters {

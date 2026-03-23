@@ -1,245 +1,76 @@
 [![npm version](https://img.shields.io/npm/v/memento-memory)](https://www.npmjs.com/package/memento-memory)
 [![CI](https://github.com/sanathshetty444/memento/actions/workflows/ci.yml/badge.svg)](https://github.com/sanathshetty444/memento/actions/workflows/ci.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Docs](https://img.shields.io/badge/docs-live-7c3aed)](https://sanathshetty444.github.io/memento/)
 
 # Memento
 
-Persistent semantic memory for Claude Code. Save, recall, and search context across sessions — even after autocompact.
+Persistent semantic memory for AI coding agents. Save, recall, and search context across sessions — even after autocompact.
 
-## What it does
-
-Memento captures conversation context, decisions, and code knowledge into a vector database with semantic retrieval. No more re-explaining context every new session.
-
-- **Auto-capture** — hooks silently capture every meaningful tool call in the background
-- **Survives compaction** — memories persist even when Claude's context window is compressed
-- **Semantic recall** — find relevant context by meaning, not exact keywords
-- **Cross-project search** — find knowledge across all your projects
-- **Auto-tagging** — heuristic classification (code, decision, error, architecture, config, dependency, todo)
-- **Sensitive data redaction** — API keys, tokens, passwords stripped before storage
-- **Deduplication** — hash + cosine similarity prevents redundant entries
-- **Local-first** — works offline with local embeddings, zero API keys required
-- **Browser-compatible** — runs in browsers and extensions via IndexedDB + fetch-based embeddings
+Works with **Claude Code**, **OpenCode**, **Cursor**, and **Windsurf**. Runs entirely on your machine — no cloud, no API keys, no data leaving your computer.
 
 ## Quick Start
 
-> Requires Node.js >= 20. Works with **Claude Code** and **OpenCode**.
-
 ```bash
-# One command — that's it
 npx memento-memory setup
 ```
 
-Or install globally:
+That's it. Your next session will automatically capture and recall context.
 
-```bash
-npm install -g memento-memory
-memento setup
-```
+> Requires Node.js >= 20. See [Installation Guide](https://sanathshetty444.github.io/memento/getting-started/installation) for all methods and IDE-specific setup.
 
-Or from source:
+## Features
 
-```bash
-git clone https://github.com/sanathshetty444/memento.git
-cd memento
-npm install && npm run build
-node dist/cli.js setup
-```
+- **Auto-capture** — hooks silently capture every meaningful tool call in the background
+- **Survives compaction** — memories persist even when the context window is compressed
+- **Semantic recall** — find relevant context by meaning, not exact keywords
+- **Hybrid search** — vector (cosine similarity) + keyword (BM25), weighted scoring
+- **Smart memory** — contradiction detection, importance scoring, entity extraction, relationship tracking
+- **17 MCP tools** — save, recall, search, forget, list, health, export, import, migrate, session management, project indexing, profiling, compaction, and more
+- **Cross-project search** — find knowledge across all your projects
+- **Auto-tagging** — heuristic classification (code, decision, error, architecture, config, dependency, todo)
+- **Sensitive data redaction** — API keys, tokens, passwords stripped before storage
+- **Local-first** — works offline with local embeddings (all-MiniLM-L6-v2), zero config
+- **Browser-compatible** — runs in browsers and extensions via IndexedDB + fetch-based embeddings
+- **HTTP API + Graph UI** — REST endpoints and D3 visualization of your memory graph
 
-That's it. Your next Claude Code session will automatically capture and recall context.
-
-### What `memento setup` configures
-
-**Claude Code:**
-
-| File | What |
-|------|------|
-| `~/.claude.json` | MCP server — gives Claude `memory_save`, `memory_recall`, etc. |
-| `~/.claude/settings.json` | PostToolUse + Stop hooks — auto-captures context silently |
-| `~/.claude/CLAUDE.md` | Instructions for Claude to auto-recall on session start |
-| `~/.claude-memory/` | Data directory for stored memories |
-
-**OpenCode** (auto-detected):
-
-| File | What |
-|------|------|
-| `~/.config/opencode/opencode.json` | MCP server config |
-| `~/.config/opencode/plugins/memento-capture.js` | Auto-capture plugin (tool.execute.after + session.idle) |
-| `~/.claude/CLAUDE.md` | Shared instructions (OpenCode falls back to CLAUDE.md) |
-
-### CLI Commands
-
-```bash
-memento setup       # Configure everything (idempotent, safe to re-run)
-memento status      # Check what's configured
-memento teardown    # Remove config (keeps stored memories)
-```
-
-All commands also work with `npx memento-memory <command>`.
-
-## How it works
+## How It Works
 
 ```
-┌─ During your session ──────────────────────────────────────────┐
-│                                                                │
-│  Tool call (Edit, Bash, Write...)                              │
-│       ↓                                                        │
-│  PostToolUse hook → capture-queue.jsonl (fast, <50ms)          │
-│                                                                │
-│  Claude can also call memory_save explicitly for key decisions │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-                           ↓
-┌─ When session ends ────────────────────────────────────────────┐
-│                                                                │
-│  Stop hook captures last message + triggers queue worker       │
-│       ↓                                                        │
-│  Queue worker: redact → auto-tag → chunk → embed → dedup →    │
-│                store in ~/.claude-memory/store/                 │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-                           ↓
-┌─ Next session ─────────────────────────────────────────────────┐
-│                                                                │
-│  Claude reads CLAUDE.md instructions                           │
-│       ↓                                                        │
-│  Calls memory_recall with relevant query                       │
-│       ↓                                                        │
-│  Context restored — compaction had zero effect                 │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
+Session active → PostToolUse hook captures context → queue
+Session ends   → Stop hook triggers pipeline:
+                 redact → tag → chunk → dedup → embed → store
+Next session   → memory_recall restores context automatically
 ```
 
-### What gets captured (and what doesn't)
+See [How It Works](https://sanathshetty444.github.io/memento/getting-started/how-it-works) for the full architecture walkthrough.
 
-| Captured | Filtered out |
-|----------|-------------|
-| `Edit`, `Bash`, `Write` tool calls | `Read`, `Glob`, `Grep` (read-only, low signal) |
-| Outputs ≥ 50 chars | Short outputs (< 50 chars) |
-| Unique content | Duplicates (hash + 92% cosine similarity) |
-| Redacted content | Raw secrets (API keys, tokens, passwords) |
-| — | `memory_*` tool calls (prevents circular capture) |
+## Documentation
 
-## MCP Tools
+**[sanathshetty444.github.io/memento](https://sanathshetty444.github.io/memento/)**
 
-| Tool | Description |
-|------|-------------|
-| `memory_save` | Save context with optional tags, namespace, global flag |
-| `memory_recall` | Semantic search within current project |
-| `memory_search` | Cross-project semantic search |
-| `memory_forget` | Delete a memory by ID |
-| `memory_list` | Browse memories with filters and pagination |
-| `memory_health` | Storage status and diagnostics |
-| `memory_export` | Export memories as JSON or JSONL |
-| `memory_migrate` | Re-embed all memories after switching embedding models |
-
-## Storage Backends
-
-| Backend | Status | Environment | Description |
-|---------|--------|-------------|-------------|
-| **Local files** | Default | Node.js | JSON files at `~/.claude-memory/store/`, zero config |
-| **IndexedDB** | Default | Browser | Browser-native storage, zero config |
-| **ChromaDB** | Optional | Node.js | HTTP-based vector DB (needs running server) |
-| **Neo4j** | Optional | Node.js | Graph-enhanced retrieval with relationships |
-
-## Embedding Providers
-
-| Provider | Dimensions | Cost | Environment | Description |
-|----------|-----------|------|-------------|-------------|
-| **Local** (default) | 384 | Free | Node.js | Transformers.js, all-MiniLM-L6-v2, offline |
-| **Gemini** | 768 | Free tier | Node.js | `text-embedding-004` via SDK |
-| **Gemini Fetch** | 768 | Free tier | Browser | `text-embedding-004` via fetch API |
-| **OpenAI** | 1536 | Paid | Node.js | `text-embedding-3-small` |
-
-## Configuration
-
-Config is loaded from: env vars → `~/.claude-memory/config.json` → defaults.
-
-```json
-{
-  "store": {
-    "type": "local",
-    "localPath": "~/.claude-memory/store"
-  },
-  "embeddings": {
-    "provider": "local"
-  },
-  "capture": {
-    "autoCapture": true
-  }
-}
-```
-
-See `Techspec.md` for full config reference.
-
-## Browser Usage
-
-Memento runs in browsers and Chrome extensions via a dedicated entry point:
-
-```typescript
-import { MemoryManager, IndexedDBAdapter, GeminiFetchEmbeddingProvider } from "memento-memory/browser";
-
-const store = new IndexedDBAdapter({ dbName: "my-app-memory" });
-const embeddings = new GeminiFetchEmbeddingProvider({ apiKey: "your-gemini-key" });
-
-const manager = new MemoryManager({ store, embeddings });
-await manager.save({ content: "important context", tags: ["decision"] });
-const results = await manager.recall("what was decided?");
-```
-
-The browser bundle is ~29KB ESM with zero Node.js dependencies. Uses IndexedDB for storage and the Gemini REST API (via `fetch`) for embeddings.
-
-## Architecture
-
-```
-Memento
-  ├── CLI (setup / teardown / status)
-  ├── MCP Server (stdio)
-  │   └── Tools: save, recall, search, forget, list, health, export, migrate
-  ├── Memory Manager (orchestrator)
-  │   └── Redaction → Tagging → Chunking → Dedup → Embed → Store
-  ├── Storage (pluggable)
-  │   ├── Local files (default, Node.js)
-  │   ├── IndexedDB (default, browser)
-  │   ├── ChromaDB (optional)
-  │   └── Neo4j (optional)
-  ├── Embeddings (pluggable)
-  │   ├── Local/Transformers.js (default, Node.js)
-  │   ├── Gemini Fetch (browser)
-  │   ├── Gemini SDK (optional)
-  │   └── OpenAI (optional)
-  ├── Hooks (auto-capture)
-  │   ├── PostToolUse → capture queue (Claude Code)
-  │   ├── Stop → session summary + queue processing (Claude Code)
-  │   └── OpenCode plugin → capture + flush (OpenCode)
-  ├── Browser Bundle (ESM, ~29KB)
-  │   └── import from "memento-memory/browser"
-  └── Resilience
-      ├── Circuit breaker
-      ├── Write-ahead log
-      └── LRU cache
-```
+- [Installation](https://sanathshetty444.github.io/memento/getting-started/installation) — setup for all IDEs, troubleshooting
+- [Quickstart](https://sanathshetty444.github.io/memento/getting-started/quickstart) — your first memory in 5 minutes
+- [Search Modes](https://sanathshetty444.github.io/memento/guides/search-modes) — vector, keyword, and hybrid explained
+- [Smart Memory](https://sanathshetty444.github.io/memento/guides/smart-memory) — contradiction detection, importance scoring, entities
+- [Configuration](https://sanathshetty444.github.io/memento/guides/configuration) — full config reference
+- [MCP Tools Reference](https://sanathshetty444.github.io/memento/reference/tools) — all 17 tools with parameters and examples
+- [CLI Reference](https://sanathshetty444.github.io/memento/reference/cli) — setup, status, teardown, serve
+- [Architecture](https://sanathshetty444.github.io/memento/architecture/overview) — system overview, memory pipeline, search internals
 
 ## Development
 
 ```bash
-npm install          # Install dependencies
-npm run build        # Compile TypeScript + browser bundle
-npm test             # Run tests (99 tests)
-npm test -- --coverage  # Run with coverage report
-npm run test:watch   # Watch mode
-npm run lint         # Lint with ESLint
-npm run lint:fix     # Lint and auto-fix
-npm run format       # Format with Prettier
-npm run format:check # Check formatting
-npx tsc --noEmit     # Type-check only
+npm install && npm run build   # Build
+npm test                       # Run tests
+npm run lint                   # Lint
+npx tsc --noEmit               # Type-check
 ```
-
-Pre-commit hooks (husky + lint-staged) auto-fix formatting on commit. CI runs lint, typecheck, tests (Node 20 + 22), and build on every PR.
 
 ## Contributing
 
-Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions welcome! See the [Contributing Guide](https://sanathshetty444.github.io/memento/contributing/CONTRIBUTING).
 
 ## License
 
-This project is licensed under the [AGPL-3.0](LICENSE).
+[AGPL-3.0](LICENSE)

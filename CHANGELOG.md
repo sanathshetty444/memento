@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-03-23
+
+### Added
+- **9 new MCP tools**: `memory_session_start`, `memory_stats`, `memory_compact`, `memory_related`, `memory_session_summary`, `memory_index_project`, `memory_ingest`, `memory_profile`, `memory_import`
+- **Contradiction detection**: auto-detects when new memories supersede existing ones using negation/temporal patterns
+- **Importance scoring**: calculates importance (0–1) at save time with exponential decay over time
+- **Entity extraction**: indexes file paths, functions, classes, packages, URLs, env vars for knowledge graph
+- **Relationship tracking**: graph relations (similar, supersedes, references, contradicts, elaborates) between memories
+- **Re-ranking**: post-search re-ranking with recency, source quality, and tag relevance signals
+- **User/project profiling**: generates coding patterns and decision history from memory
+- **HNSW index**: fast approximate nearest neighbor search for local file adapter
+- **BM25 keyword search**: full-text keyword matching with term/document frequency scoring
+- **Hybrid search mode**: weighted combination of vector (cosine) + keyword (BM25) scoring
+- **Local HTTP REST API** (`memento serve`): REST endpoints mirroring all MCP tools, CORS-enabled, API key support
+- **D3.js graph visualization UI**: interactive memory graph with search, namespace/tag filters, force simulation
+- **Chrome extension**: save pages/selections to Memento via context menu (Manifest v3)
+- **File watchers**: auto-ingest files from `~/.claude-memory/inbox/`
+- **Content extractors**: markdown, source code, URL, PDF, and image extractors
+- **Multi-IDE CLI support**: `memento setup --target cursor|windsurf` with shared rules files
+- **Project indexer**: scan README, package.json, config files for initial knowledge base
+- **Performance benchmarks**: MemoryBench-compatible provider adapter, ingestion/search/relevance benchmarks
+- **Memory compaction tool**: clean up old, duplicate, and low-importance memories
+
+### Changed
+- Version bump from 0.4.0 to 1.0.0 (major release with SuperMemory feature parity)
+
+## [0.4.0] - 2026-03-20
+
 ### Added
 - OpenCode support: auto-detects OpenCode and configures MCP server + capture plugin during `memento setup`
 - OpenCode capture plugin with `tool.execute.after` and `session.idle` hooks

@@ -32,10 +32,10 @@ async function main() {
 
   const server = new McpServer({
     name: "memory",
-    version: "0.3.0",
+    version: "1.0.0",
   });
 
-  registerAllTools(server, manager);
+  registerAllTools(server, manager, store);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

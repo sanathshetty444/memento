@@ -7,6 +7,7 @@
 import type { VectorStore } from "../storage/interface.js";
 import type { MemoryEntry } from "./types.js";
 import { cosineSimilarity } from "./dedup.js";
+import { effectiveImportance } from "./importance.js";
 
 const PAGE_SIZE = 100;
 const MERGE_BATCH_LIMIT = 500;
@@ -63,7 +64,7 @@ function toEpoch(timestamp: string): number {
  * Phases run in order:
  *   1. TTL expiry — remove stale entries
  *   2. Near-duplicate merge — collapse similar entries, keeping the newest
- *   3. Max-size eviction — trim to maxEntries, oldest first
+ *   3. Max-size eviction — trim to maxEntries, lowest effective importance first
  */
 export async function compactMemories(
   store: VectorStore,
@@ -169,11 +170,16 @@ export async function compactMemories(
   surviving = surviving.filter((e) => !mergedIds.has(e.id));
 
   // ------------------------------------------------------------------
-  // Phase 3 — Max-size eviction
+  // Phase 3 — Max-size eviction (lowest effective importance first)
   // ------------------------------------------------------------------
   if (surviving.length > maxEntries) {
-    // Sort oldest first so we can pop from the front
-    surviving.sort((a, b) => toEpoch(a.metadata.timestamp) - toEpoch(b.metadata.timestamp));
+    // Sort by effective importance ascending — least important entries first.
+    // Entries without an importance score default to 0.5 (mid-range).
+    surviving.sort((a, b) => {
+      const aEff = effectiveImportance(a.metadata.importance ?? 0.5, a.metadata.timestamp);
+      const bEff = effectiveImportance(b.metadata.importance ?? 0.5, b.metadata.timestamp);
+      return aEff - bEff;
+    });
 
     const excess = surviving.length - maxEntries;
     const toEvict = surviving.slice(0, excess);

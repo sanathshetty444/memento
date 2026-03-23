@@ -3,3 +3,9 @@ dist/
 *.tsbuildinfo
 .DS_Store
 coverage/
+
+# VitePress
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+docs/.vitepress/.temp/
+docs/.vitepress/config.ts.timestamp-*

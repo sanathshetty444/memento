@@ -1,6 +1,6 @@
 {
   "name": "memento-memory",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Persistent semantic memory for Claude Code — auto-captures context, survives compaction, zero-config recall",
   "author": "Sanath Shetty <sanathshetty444@gmail.com>",
@@ -65,7 +65,10 @@
     "lint": "eslint src/ tests/",
     "lint:fix": "eslint src/ tests/ --fix",
     "format": "prettier --write --no-error-on-unmatched-pattern 'src/**/*.ts' 'tests/**/*.ts' '*.json' '*.yml'",
-    "format:check": "prettier --check --no-error-on-unmatched-pattern 'src/**/*.ts' 'tests/**/*.ts' '*.json' '*.yml'"
+    "format:check": "prettier --check --no-error-on-unmatched-pattern 'src/**/*.ts' 'tests/**/*.ts' '*.json' '*.yml'",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "lint-staged": {
     "*.{ts,js}": [
@@ -100,6 +103,7 @@
     "tsup": "^8.5.1",
     "typescript": "^5.8.0",
     "typescript-eslint": "^8.57.1",
+    "vitepress": "^1.6.4",
     "vitest": "^3.1.0"
   }
 }

@@ -1,6 +1,6 @@
 # Memento Documentation
 
-Persistent semantic memory for AI coding agents. Save, recall, and search context across sessions — even after autocompact.
+Persistent semantic memory for AI coding agents. Save, recall, and search context across sessions — even after autocompact. Zero-config, local-first, private by design.
 
 Memento works with **Claude Code**, **OpenCode**, **Cursor**, and **Windsurf**. It runs entirely on your machine — no cloud, no API keys, no data leaving your computer.
 

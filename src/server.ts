@@ -267,6 +267,13 @@ export function startServer(manager: MemoryManager): Promise<http.Server> {
         return;
       }
 
+      // GET / → redirect to /graph
+      if (req.method === "GET" && pathname === "/") {
+        res.writeHead(302, { Location: "/graph" });
+        res.end();
+        return;
+      }
+
       // GET /graph → serve graph.html
       if (req.method === "GET" && pathname === "/graph") {
         const served = serveStaticFile(res, path.join(UI_DIR, "graph.html"));

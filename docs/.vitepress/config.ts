@@ -9,6 +9,7 @@ export default defineConfig({
   base: "/memento/",
 
   head: [
+    ["link", { rel: "icon", type: "image/svg+xml", href: "/memento/favicon.svg" }],
     ["meta", { name: "theme-color", content: "#7c3aed" }],
     ["meta", { name: "og:type", content: "website" }],
     ["meta", { name: "og:title", content: "Memento — AI Agent Memory" }],
